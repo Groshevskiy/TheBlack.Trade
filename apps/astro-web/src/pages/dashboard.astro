@@ -1,0 +1,154 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+---
+<BaseLayout title="Dashboard">
+  <section class="card hero">
+    <div>
+      <p class="eyebrow">Control center</p>
+      <h2>Operations dashboard</h2>
+      <p class="lede">Сводка по заказам, уведомлениям, кошелькам и payout requisites в одном экране.</p>
+    </div>
+    <button id="refresh" type="button">Refresh</button>
+  </section>
+
+  <div id="notice" class="notice" hidden></div>
+
+  <section class="grid stats">
+    <div class="card stat"><span>Total orders</span><strong id="ordersTotal">—</strong></div>
+    <div class="card stat"><span>Open orders</span><strong id="ordersOpen">—</strong></div>
+    <div class="card stat"><span>Notifications</span><strong id="notificationsTotal">—</strong></div>
+    <div class="card stat"><span>Wallets</span><strong id="walletsTotal">—</strong></div>
+  </section>
+
+  <section class="grid panels">
+    <section class="card panel-wide">
+      <div class="panel-head">
+        <div>
+          <p class="eyebrow">Orders</p>
+          <h2>Recent activity</h2>
+        </div>
+        <a href="/orders">Open all</a>
+      </div>
+      <div id="ordersList" class="feed"><p class="empty">Loading orders…</p></div>
+    </section>
+
+    <section class="card">
+      <div class="panel-head">
+        <div>
+          <p class="eyebrow">Notifications</p>
+          <h2>Latest updates</h2>
+        </div>
+      </div>
+      <div id="notificationsList" class="feed"><p class="empty">Loading notifications…</p></div>
+    </section>
+
+    <section class="card">
+      <div class="panel-head">
+        <div>
+          <p class="eyebrow">Wallets</p>
+          <h2>Saved addresses</h2>
+        </div>
+        <a href="/wallets">Open wallets</a>
+      </div>
+      <div id="walletsList" class="feed"><p class="empty">Loading wallets…</p></div>
+    </section>
+
+    <section class="card">
+      <div class="panel-head">
+        <div>
+          <p class="eyebrow">Payout requisites</p>
+          <h2>Customer payout methods</h2>
+        </div>
+      </div>
+      <div id="payoutsList" class="feed"><p class="empty">Loading payout requisites…</p></div>
+    </section>
+  </section>
+
+  <style>
+    .hero,.panel-head,.stat{display:flex;justify-content:space-between;gap:16px;align-items:center}.hero{margin-bottom:16px;flex-wrap:wrap}.hero h2,.panel-head h2{margin:4px 0 0}.eyebrow{margin:0;color:#8b98ab;text-transform:uppercase;letter-spacing:.08em;font-size:12px;font-weight:700}.lede{color:#b6c0cf}.hero button{background:#0f1115;color:#f5f7fa;border:1px solid #2a2f3a;border-radius:10px;padding:10px 14px;font:inherit;cursor:pointer}.notice{margin:0 0 16px;padding:12px 14px;border:1px solid #7f1d1d;background:#2b1618;border-radius:10px;color:#fecaca}.stats{margin-bottom:16px}.stat{align-items:flex-start;flex-direction:column}.stat span{color:#8b98ab;font-size:13px}.stat strong{font-size:28px}.panels{align-items:start}.panel-wide{grid-column:span 2}.panel-head a{color:#7dd3fc;text-decoration:none}.feed{display:grid;gap:12px}.feed-item{padding:14px;border:1px solid #2a2f3a;border-radius:12px;background:#11151c}.feed-item h3,.feed-item p{margin:0}.feed-item p{color:#b6c0cf;font-size:14px}.feed-meta{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:8px}.status{display:inline-flex;padding:5px 10px;border-radius:999px;font-size:12px;font-weight:700;border:1px solid currentColor}.status.completed{color:#86efac}.status.processing{color:#fde68a}.status.awaiting_payment,.status.payment_confirmed{color:#7dd3fc}.status.cancelled,.status.expired{color:#fca5a5}.status.draft{color:#d8b4fe}.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}.empty{color:#8b98ab}@media(max-width:860px){.panel-wide{grid-column:span 1}.hero button{width:100%}}
+  </style>
+
+  <script>
+    const API = `${window.location.protocol}//${window.location.hostname}:4000/api`;
+    const fmt = (v) => Number(v ?? 0).toLocaleString('en-US');
+    const date = (v) => v ? new Date(v).toLocaleString('ru-RU', { dateStyle: 'short', timeStyle: 'short' }) : '—';
+
+    function setNotice(message = '') {
+      const box = document.getElementById('notice');
+      if (!message) { box.hidden = true; box.textContent = ''; return; }
+      box.hidden = false; box.textContent = message;
+    }
+
+    async function fetchJson(url) {
+      const response = await fetch(url);
+      const data = await response.json();
+      if (!response.ok) throw new Error(data?.message || 'Request failed');
+      return data;
+    }
+
+    function renderSummary(item, notificationsSummary) {
+      const metrics = item.metrics || {};
+      const notificationMetrics = notificationsSummary?.metrics || {};
+      document.getElementById('ordersTotal').textContent = String(metrics.totalOrders ?? 0);
+      document.getElementById('ordersOpen').textContent = String(metrics.openOrders ?? 0);
+      document.getElementById('notificationsTotal').textContent = String(notificationMetrics.unread ?? metrics.unreadNotifications ?? 0);
+      document.getElementById('walletsTotal').textContent = String(metrics.wallets ?? 0);
+    }
+
+    function renderOrders(items) {
+      document.getElementById('ordersList').innerHTML = items.length ? items.map((item) => `
+        <article class="feed-item">
+          <div class="feed-meta"><strong class="mono">${item.publicId}</strong><span class="status ${item.statusCode}">${item.statusCode}</span></div>
+          <p>${fmt(item.fiatAmount)} fiat → ${fmt(item.cryptoAmount)} crypto</p>
+          <p>${item.directionCode} · Updated ${date(item.updatedAt)}</p>
+          <p><a href="/orders/${item.publicId}">Customer view</a> · <a href="/operator/orders/${item.publicId}">Operator view</a></p>
+        </article>`).join('') : '<p class="empty">No orders yet.</p>';
+    }
+
+    function renderNotifications(items) {
+      document.getElementById('notificationsList').innerHTML = items.length ? items.map((item) => `
+        <article class="feed-item">
+          <div class="feed-meta"><strong>${item.title}</strong><span>${date(item.createdAt)}</span></div>
+          <p>${item.body}</p>
+          <p>${item.channel}</p>
+        </article>`).join('') : '<p class="empty">No notifications yet.</p>';
+    }
+
+    function renderWallets(items) {
+      document.getElementById('walletsList').innerHTML = items.length ? items.map((item) => `
+        <article class="feed-item">
+          <div class="feed-meta"><strong>${item.label || 'Wallet'}</strong><span>${item.networkId || 'network'}</span></div>
+          <p class="mono">${item.address || '—'}</p>
+          <p>User ${item.userId || '—'}</p>
+        </article>`).join('') : '<p class="empty">No wallets saved.</p>';
+    }
+
+    function renderPayouts(items) {
+      document.getElementById('payoutsList').innerHTML = items.length ? items.map((item) => `
+        <article class="feed-item">
+          <div class="feed-meta"><strong>${item.requisiteType || 'method'}</strong><span>${item.status || 'active'}</span></div>
+          <p>${item.bankName || item.ownerName || 'Details hidden'}</p>
+          <p>${item.cardMask || item.sbpPhone || item.fiatCurrencyId || '—'}</p>
+        </article>`).join('') : '<p class="empty">No payout requisites yet.</p>';
+    }
+
+    async function loadDashboard() {
+      try {
+        setNotice('');
+        const data = await fetchJson(`${API}/dashboard/summary`);
+        const item = data.item || {};
+        renderSummary(item);
+        renderOrders(item.orders || []);
+        renderNotifications(item.notifications || []);
+        renderWallets(item.wallets || []);
+        renderPayouts(item.payoutRequisites || []);
+      } catch (error) {
+        console.error('dashboard load failed', error);
+        setNotice(error.message || 'Unable to load dashboard');
+      }
+    }
+
+    document.getElementById('refresh').addEventListener('click', loadDashboard);
+    loadDashboard();
+  </script>
+</BaseLayout>

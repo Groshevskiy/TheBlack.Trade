@@ -1,0 +1,7 @@
+[
+  {
+    "name": "Order status changed",
+    "trigger": "item.update",
+    "collection": "tb_orders"
+  }
+]

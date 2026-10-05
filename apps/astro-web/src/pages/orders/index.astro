@@ -1,0 +1,136 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+---
+<BaseLayout title="Orders">
+  <section class="card hero">
+    <div>
+      <p class="eyebrow">Customer cabinet</p>
+      <h2>Your orders</h2>
+      <p class="lede">Список заявок клиента со статусами, суммами и быстрым переходом в карточку заказа.</p>
+    </div>
+    <div class="hero-actions">
+      <button id="refresh" type="button">Refresh</button>
+      <select id="statusFilter" aria-label="Filter customer orders by status">
+        <option value="all">All statuses</option>
+        <option value="draft">draft</option>
+        <option value="awaiting_payment">awaiting_payment</option>
+        <option value="payment_confirmed">payment_confirmed</option>
+        <option value="processing">processing</option>
+        <option value="completed">completed</option>
+        <option value="cancelled">cancelled</option>
+        <option value="expired">expired</option>
+      </select>
+    </div>
+  </section>
+
+  <section class="grid stats">
+    <div class="card stat"><span>Total</span><strong id="stat-total">—</strong></div>
+    <div class="card stat"><span>Open</span><strong id="stat-open">—</strong></div>
+    <div class="card stat"><span>Completed</span><strong id="stat-completed">—</strong></div>
+    <div class="card stat"><span>Needs action</span><strong id="stat-action">—</strong></div>
+  </section>
+
+  <section class="card table-card">
+    <div class="table-head">
+      <div>
+        <p class="eyebrow">Orders</p>
+        <h2>Recent requests</h2>
+      </div>
+      <p id="summary" class="summary">Loading…</p>
+    </div>
+    <div id="notice" class="notice" hidden></div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Public ID</th>
+            <th>Status</th>
+            <th>Direction</th>
+            <th>Fiat</th>
+            <th>Crypto</th>
+            <th>Updated</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="ordersBody">
+          <tr><td colspan="7" class="empty">Loading orders…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <style>
+    .hero,.table-head,.hero-actions,.stat{display:flex;justify-content:space-between;gap:16px;align-items:center}
+    .hero{margin-bottom:16px;flex-wrap:wrap}.hero h2,.table-head h2{margin:4px 0 0}.eyebrow{margin:0;color:#8b98ab;text-transform:uppercase;letter-spacing:.08em;font-size:12px;font-weight:700}.lede,.summary{color:#b6c0cf}.hero-actions{margin-left:auto}.hero-actions button,.hero-actions select{background:#0f1115;color:#f5f7fa;border:1px solid #2a2f3a;border-radius:10px;padding:10px 14px;font:inherit}.stats{margin-bottom:16px}.stat{align-items:flex-start;flex-direction:column}.stat span{color:#8b98ab;font-size:13px}.stat strong{font-size:28px}.table-card table{width:100%;border-collapse:collapse}.table-card th,.table-card td{text-align:left;padding:14px 10px;border-bottom:1px solid #2a2f3a}.table-card th{color:#8b98ab;font-size:12px;text-transform:uppercase;letter-spacing:.08em}.status{display:inline-flex;padding:5px 10px;border-radius:999px;font-size:12px;font-weight:700;border:1px solid currentColor}.status.completed{color:#86efac}.status.processing{color:#fde68a}.status.awaiting_payment,.status.payment_confirmed{color:#7dd3fc}.status.cancelled,.status.expired{color:#fca5a5}.status.draft{color:#d8b4fe}.table-wrap{overflow:auto}.table-card a.action-link{display:inline-flex;padding:8px 10px;border:1px solid #2a2f3a;border-radius:8px;color:#f5f7fa}.empty{text-align:center;color:#8b98ab}.notice{margin:0 0 16px;padding:12px 14px;border:1px solid #7f1d1d;background:#2b1618;border-radius:10px;color:#fecaca}.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}@media(max-width:720px){.table-card th:nth-child(3),.table-card td:nth-child(3),.table-card th:nth-child(5),.table-card td:nth-child(5){display:none}.hero-actions{width:100%}.hero-actions>*{flex:1}}
+  </style>
+
+  <script>
+    const API = `${window.location.protocol}//${window.location.hostname}:4000/api`;
+    const body = document.getElementById('ordersBody');
+    const filter = document.getElementById('statusFilter');
+    const notice = document.getElementById('notice');
+    const summary = document.getElementById('summary');
+
+    const fmt = (value) => Number(value ?? 0).toLocaleString('en-US');
+    const date = (value) => value ? new Date(value).toLocaleString('ru-RU', { dateStyle: 'short', timeStyle: 'short' }) : '—';
+
+    function setNotice(message = '') {
+      if (!message) {
+        notice.hidden = true;
+        notice.textContent = '';
+        return;
+      }
+      notice.hidden = false;
+      notice.textContent = message;
+    }
+
+    function updateStats(metrics = {}) {
+      document.getElementById('stat-total').textContent = String(metrics.total ?? 0);
+      document.getElementById('stat-open').textContent = String(metrics.open ?? 0);
+      document.getElementById('stat-completed').textContent = String(metrics.completed ?? 0);
+      document.getElementById('stat-action').textContent = String(metrics.needsAction ?? 0);
+    }
+
+    function renderRows(items) {
+      const selected = filter.value;
+      const filtered = selected === 'all' ? items : items.filter((item) => item.statusCode === selected);
+      summary.textContent = `${filtered.length} visible / ${items.length} total`;
+      if (!filtered.length) {
+        body.innerHTML = '<tr><td colspan="7" class="empty">No orders match this filter.</td></tr>';
+        return;
+      }
+      body.innerHTML = filtered.map((item) => `
+        <tr>
+          <td class="mono">${item.publicId}</td>
+          <td><span class="status ${item.statusCode}">${item.statusCode}</span></td>
+          <td>${item.directionCode}</td>
+          <td>${fmt(item.fiatAmount)}</td>
+          <td>${fmt(item.cryptoAmount)}</td>
+          <td>${date(item.updatedAt)}</td>
+          <td><a class="action-link" href="/orders/${item.publicId}">Open</a></td>
+        </tr>
+      `).join('');
+    }
+
+    async function loadOrders() {
+      try {
+        setNotice('');
+        body.innerHTML = '<tr><td colspan="7" class="empty">Loading orders…</td></tr>';
+        const response = await fetch(`${API}/auth/me/orders-summary`);
+        const data = await response.json();
+        if (!response.ok) throw new Error(data?.message || 'Failed to load orders');
+        const item = data.item || {};
+        updateStats(item.metrics || {});
+        renderRows(item.orders || []);
+      } catch (error) {
+        console.error('customer orders load failed', error);
+        body.innerHTML = '<tr><td colspan="7" class="empty">Unable to load orders.</td></tr>';
+        setNotice(error.message || 'Unknown error');
+      }
+    }
+
+    filter.addEventListener('change', loadOrders);
+    document.getElementById('refresh').addEventListener('click', loadOrders);
+    loadOrders();
+  </script>
+</BaseLayout>

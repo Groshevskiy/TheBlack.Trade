@@ -1,0 +1,177 @@
+---
+export const prerender = false;
+import BaseLayout from "../../layouts/BaseLayout.astro";
+const { id } = Astro.params;
+---
+<BaseLayout title={`Order ${id}`}>
+  <section class="card hero">
+    <div>
+      <p class="eyebrow">Customer order</p>
+      <h2>Track order <span class="mono">{id}</span></h2>
+      <p class="lede">Статус сделки, timeline, документы и дальнейшие шаги для клиента.</p>
+    </div>
+    <button id="refresh" type="button">Refresh</button>
+  </section>
+
+  <div id="notice" class="notice" hidden></div>
+
+  <section class="grid layout">
+    <div class="stack">
+      <section class="card">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Current state</p>
+            <h2 id="hero-title">Loading…</h2>
+            <p class="lede" id="hero-subtitle">Fetching order details.</p>
+          </div>
+          <div id="status-badge" class="status draft">draft</div>
+        </div>
+        <div class="facts">
+          <div><span>Public ID</span><strong id="publicId">—</strong></div>
+          <div><span>Direction</span><strong id="direction">—</strong></div>
+          <div><span>Fiat amount</span><strong id="fiat">—</strong></div>
+          <div><span>Crypto amount</span><strong id="crypto">—</strong></div>
+          <div><span>Rate</span><strong id="rate">—</strong></div>
+          <div><span>Expires</span><strong id="expires">—</strong></div>
+          <div><span>Wallet</span><strong id="wallet" class="mono">—</strong></div>
+          <div><span>Payout requisite</span><strong id="payout" class="mono">—</strong></div>
+          <div><span>Updated</span><strong id="updated">—</strong></div>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="section-head">
+          <div><p class="eyebrow">Progress</p><h2>Order timeline</h2></div>
+          <span id="timeline-count" class="tiny">0 events</span>
+        </div>
+        <div id="timeline" class="timeline"><p class="empty">Loading timeline…</p></div>
+      </section>
+    </div>
+
+    <div class="stack">
+      <section class="card">
+        <p class="eyebrow">Next step</p>
+        <h2 id="next-title">Preparing instructions…</h2>
+        <p class="lede" id="next-copy">The page will explain what the customer should do next.</p>
+      </section>
+
+      <section class="card">
+        <div class="section-head">
+          <div><p class="eyebrow">Documents</p><h2>Your uploads</h2></div>
+          <span id="documents-count" class="tiny">0 docs</span>
+        </div>
+        <div id="documents" class="feed"><p class="empty">Loading documents…</p></div>
+      </section>
+
+      <section class="card">
+        <div class="section-head">
+          <div><p class="eyebrow">Notifications</p><h2>Recent updates</h2></div>
+          <span id="notifications-count" class="tiny">0 items</span>
+        </div>
+        <div id="notifications" class="feed"><p class="empty">Loading notifications…</p></div>
+      </section>
+    </div>
+  </section>
+
+  <style>
+    .hero,.section-head,.facts{display:flex}.hero,.section-head{justify-content:space-between;align-items:center;gap:16px}.hero{margin-bottom:16px;flex-wrap:wrap}.hero h2{margin:4px 0 0}.eyebrow{margin:0;color:#8b98ab;text-transform:uppercase;letter-spacing:.08em;font-size:12px;font-weight:700}.lede,.tiny{color:#b6c0cf}.tiny{font-size:12px}.notice{margin:0 0 16px;padding:12px 14px;border:1px solid #7f1d1d;background:#2b1618;border-radius:10px;color:#fecaca}.layout{align-items:start}.stack{display:grid;gap:16px}.facts{flex-wrap:wrap;gap:12px;margin-top:20px}.facts>div{min-width:180px;flex:1 1 180px;background:#0f1115;border:1px solid #2a2f3a;border-radius:12px;padding:14px}.facts span{display:block;color:#8b98ab;font-size:12px;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px}.facts strong{display:block;font-size:16px}.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}.status{display:inline-flex;padding:7px 12px;border-radius:999px;font-size:13px;font-weight:700;border:1px solid currentColor;text-transform:capitalize}.status.completed,.status.approved{color:#86efac}.status.processing,.status.pending{color:#fde68a}.status.awaiting_payment,.status.payment_confirmed{color:#7dd3fc}.status.cancelled,.status.expired,.status.rejected{color:#fca5a5}.status.draft{color:#d8b4fe}.timeline,.feed{display:grid;gap:12px}.event,.feed-item{padding:14px;border:1px solid #2a2f3a;border-radius:12px;background:#11151c}.event strong,.feed-item strong,.event p,.feed-item p{margin:0}.event p,.feed-item p{color:#b6c0cf;font-size:14px}.event-meta,.feed-meta{display:flex;justify-content:space-between;gap:12px;margin-bottom:8px;flex-wrap:wrap}.empty{color:#8b98ab}.hero button{background:#0f1115;color:#f5f7fa;border:1px solid #2a2f3a;border-radius:10px;padding:10px 14px;font:inherit;cursor:pointer}@media(max-width:860px){.layout{grid-template-columns:1fr}.section-head{align-items:flex-start;flex-direction:column}.hero button{width:100%}}
+  </style>
+
+  <script define:vars={{ id }}>
+    const API = `${window.location.protocol}//${window.location.hostname}:4000/api`;
+    const orderId = id;
+    const $ = (s) => document.querySelector(s);
+    const fmt = (v) => Number(v ?? 0).toLocaleString('en-US');
+    const date = (v) => v ? new Date(v).toLocaleString('ru-RU', { dateStyle: 'short', timeStyle: 'short' }) : '—';
+    const cut = (v) => v ? `${String(v).slice(0, 8)}…` : '—';
+    const nextSteps = {
+      draft: ['Order created', 'Ожидается переход к шагу оплаты или подтверждению реквизитов.'],
+      awaiting_payment: ['Send payment', 'Переведите фиат по выданным реквизитам и дождитесь подтверждения оплаты.'],
+      payment_confirmed: ['Payment confirmed', 'Платёж подтверждён, заявка готовится к исполнению.'],
+      processing: ['Processing payout', 'Оператор завершает обмен и готовит перевод криптовалюты.'],
+      completed: ['Completed', 'Сделка завершена. Сохраните детали и проверьте поступление средств.'],
+      cancelled: ['Cancelled', 'Заявка отменена. При необходимости создайте новую сделку.'],
+      expired: ['Expired', 'Срок действия заявки истёк. Создайте новую заявку для продолжения.'],
+    };
+
+    function notify(message = '') {
+      const box = $('#notice');
+      if (!message) { box.hidden = true; box.textContent = ''; return; }
+      box.hidden = false; box.textContent = message;
+    }
+
+    async function fetchJson(url) {
+      const response = await fetch(url);
+      const data = await response.json();
+      if (!response.ok) throw new Error(data?.message || 'Request failed');
+      return data;
+    }
+
+    function renderSummary(order) {
+      $('#hero-title').textContent = `${fmt(order.fiatAmount)} fiat → ${fmt(order.cryptoAmount)} crypto`;
+      $('#hero-subtitle').textContent = `Quote ${cut(order.quoteId)} · User ${cut(order.userId)}`;
+      $('#publicId').textContent = order.publicId;
+      $('#direction').textContent = order.directionCode;
+      $('#fiat').textContent = fmt(order.fiatAmount);
+      $('#crypto').textContent = fmt(order.cryptoAmount);
+      $('#rate').textContent = order.rate;
+      $('#expires').textContent = date(order.expiresAt);
+      $('#wallet').textContent = cut(order.walletId);
+      $('#payout').textContent = cut(order.payoutRequisiteId);
+      $('#updated').textContent = date(order.updatedAt);
+      $('#status-badge').className = `status ${order.statusCode}`;
+      $('#status-badge').textContent = order.statusCode.replaceAll('_', ' ');
+      const [title, copy] = nextSteps[order.statusCode] || ['Status updated', 'Следуйте дальнейшим инструкциям поддержки.'];
+      $('#next-title').textContent = title;
+      $('#next-copy').textContent = copy;
+    }
+
+    function renderTimeline(items) {
+      $('#timeline-count').textContent = `${items.length} events`;
+      $('#timeline').innerHTML = items.length ? items.map((item) => `
+        <article class="event">
+          <div class="event-meta"><strong>${item.eventType}</strong><span>${date(item.createdAt)}</span></div>
+          <p>${item.fromStatus || '—'} → ${item.toStatus || '—'}</p>
+          <p>${item.actorType || 'system'}${item.actorId ? ` · ${item.actorId}` : ''}</p>
+        </article>`).join('') : '<p class="empty">No events yet.</p>';
+    }
+
+    function renderDocuments(items) {
+      $('#documents-count').textContent = `${items.length} docs`;
+      $('#documents').innerHTML = items.length ? items.map((item) => `
+        <article class="feed-item">
+          <div class="feed-meta"><strong>${item.documentType}</strong><span class="status ${item.status}">${item.status}</span></div>
+          <p>ID: <span class="mono">${item.id}</span></p>
+          <p>Created: ${date(item.createdAt)}</p>
+        </article>`).join('') : '<p class="empty">No uploaded documents yet.</p>';
+    }
+
+    function renderNotifications(items) {
+      $('#notifications-count').textContent = `${items.length} items`;
+      $('#notifications').innerHTML = items.length ? items.map((item) => `
+        <article class="feed-item">
+          <div class="feed-meta"><strong>${item.title}</strong><span>${date(item.createdAt)}</span></div>
+          <p>${item.body}</p>
+          <p>Channel: ${item.channel}</p>
+        </article>`).join('') : '<p class="empty">No notifications yet.</p>';
+    }
+
+    async function load() {
+      try {
+        notify('');
+        const data = await fetchJson(`${API}/orders/${orderId}/summary`);
+        const item = data.item || {};
+        renderSummary(item.order);
+        renderTimeline(item.timeline || []);
+        renderDocuments(item.documents || []);
+        renderNotifications(item.notifications || []);
+      } catch (error) {
+        console.error('customer order detail failed', error);
+        notify(error.message || 'Unable to load order detail');
+      }
+    }
+
+    document.getElementById('refresh').addEventListener('click', load);
+    load();
+  </script>
+</BaseLayout>

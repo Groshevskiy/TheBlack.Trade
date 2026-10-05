@@ -1,0 +1,43 @@
+{
+  "name": "theblacktrade-api",
+  "private": true,
+  "type": "module",
+  "version": "0.1.0",
+  "scripts": {
+    "dev": "nest start --watch",
+    "build": "nest build",
+    "start": "node dist/main.js",
+    "lint": "eslint .",
+    "test": "vitest",
+    "db:generate": "drizzle-kit generate",
+    "db:push": "drizzle-kit push",
+    "db:studio": "drizzle-kit studio",
+    "directus:schema:apply": "node scripts/directus-apply-schema.mjs",
+    "directus:schema:pull": "node scripts/directus-pull-schema.mjs",
+    "check:ready": "node scripts/check-api-ready.mjs",
+    "test:smoke:summary": "node scripts/smoke-summary-endpoints.mjs"
+  },
+  "dependencies": {
+    "@directus/sdk": "^20.1.0",
+    "@nestjs/common": "^12.1.2",
+    "@nestjs/core": "^12.1.2",
+    "@nestjs/platform-express": "^12.1.2",
+    "drizzle-orm": "^0.45.2",
+    "ioredis": "^5.8.1",
+    "pg": "^8.16.3",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "^12.0.7",
+    "@nestjs/schematics": "^12.0.6",
+    "@nestjs/testing": "^12.1.2",
+    "@types/node": "^24.6.0",
+    "@types/pg": "^8.23.1",
+    "drizzle-kit": "^0.31.4",
+    "eslint": "^9.36.0",
+    "typescript": "^6.0.2",
+    "vitest": "^3.2.4"
+  }
+}

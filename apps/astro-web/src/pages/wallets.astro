@@ -1,0 +1,103 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+---
+<BaseLayout title="Wallets">
+  <section class="card hero">
+    <div>
+      <p class="eyebrow">Customer cabinet</p>
+      <h2>Wallets & payout methods</h2>
+      <p class="lede">Сохранённые криптокошельки и фиатные реквизиты для сделок клиента.</p>
+    </div>
+    <button id="refresh" type="button">Refresh</button>
+  </section>
+
+  <div id="notice" class="notice" hidden></div>
+
+  <section class="grid stats">
+    <div class="card stat"><span>Wallets</span><strong id="walletCount">—</strong></div>
+    <div class="card stat"><span>Verified wallets</span><strong id="verifiedCount">—</strong></div>
+    <div class="card stat"><span>Payout methods</span><strong id="payoutCount">—</strong></div>
+    <div class="card stat"><span>Active orders</span><strong id="ordersCount">—</strong></div>
+  </section>
+
+  <section class="grid panels">
+    <section class="card">
+      <div class="panel-head">
+        <div><p class="eyebrow">Crypto</p><h2>Wallet addresses</h2></div>
+        <span id="walletLabel" class="tiny">—</span>
+      </div>
+      <div id="walletsList" class="feed"><p class="empty">Loading wallets…</p></div>
+    </section>
+
+    <section class="card">
+      <div class="panel-head">
+        <div><p class="eyebrow">Fiat</p><h2>Payout requisites</h2></div>
+        <span id="payoutLabel" class="tiny">—</span>
+      </div>
+      <div id="payoutsList" class="feed"><p class="empty">Loading payout methods…</p></div>
+    </section>
+  </section>
+
+  <section class="card tip">
+    <p class="eyebrow">How it works</p>
+    <h2>Use your saved details in a new order</h2>
+    <p class="lede">Выбор wallet и payout requisite происходит при создании сделки. В этом MVP экран показывает уже сохранённые безопасные данные и их связь с последними заявками.</p>
+    <a href="/orders">Open orders</a>
+  </section>
+
+  <style>
+    .hero,.panel-head,.stat{display:flex;justify-content:space-between;gap:16px;align-items:center}.hero{margin-bottom:16px;flex-wrap:wrap}.hero h2,.panel-head h2,.tip h2{margin:4px 0 0}.eyebrow{margin:0;color:#8b98ab;text-transform:uppercase;letter-spacing:.08em;font-size:12px;font-weight:700}.lede,.tiny{color:#b6c0cf}.tiny{font-size:12px}.hero button{background:#0f1115;color:#f5f7fa;border:1px solid #2a2f3a;border-radius:10px;padding:10px 14px;font:inherit;cursor:pointer}.notice{margin:0 0 16px;padding:12px 14px;border:1px solid #7f1d1d;background:#2b1618;border-radius:10px;color:#fecaca}.stats{margin-bottom:16px}.stat{align-items:flex-start;flex-direction:column}.stat span{color:#8b98ab;font-size:13px}.stat strong{font-size:28px}.panels{align-items:start;margin-bottom:16px}.feed{display:grid;gap:12px}.feed-item{padding:14px;border:1px solid #2a2f3a;border-radius:12px;background:#11151c}.feed-item h3,.feed-item p{margin:0}.feed-item p{color:#b6c0cf;font-size:14px}.feed-meta{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:8px}.badge{display:inline-flex;padding:5px 10px;border-radius:999px;font-size:12px;font-weight:700;border:1px solid currentColor}.badge.good{color:#86efac}.badge.neutral{color:#7dd3fc}.badge.warn{color:#fde68a}.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}.empty{color:#8b98ab}.tip a{display:inline-block;margin-top:14px;color:#7dd3fc;text-decoration:none}@media(max-width:860px){.hero button{width:100%}}
+  </style>
+
+  <script>
+    const API = `${window.location.protocol}//${window.location.hostname}:4000/api`;
+    const cut = (value) => value ? `${String(value).slice(0, 11)}…${String(value).slice(-6)}` : '—';
+    const date = (value) => value ? new Date(value).toLocaleString('ru-RU', { dateStyle: 'short', timeStyle: 'short' }) : '—';
+    const setNotice = (message = '') => {
+      const box = document.getElementById('notice');
+      box.hidden = !message;
+      box.textContent = message;
+    };
+    function renderWallets(items, metrics) {
+      document.getElementById('walletCount').textContent = String(metrics.wallets ?? 0);
+      document.getElementById('verifiedCount').textContent = String(metrics.verifiedWallets ?? 0);
+      document.getElementById('walletLabel').textContent = `${items.length} saved · ${metrics.networks ?? 0} networks`;
+      document.getElementById('walletsList').innerHTML = items.length ? items.map((item) => `
+        <article class="feed-item">
+          <div class="feed-meta"><strong>${item.label || 'Wallet'}</strong><span class="badge ${item.isVerified ? 'good' : 'warn'}">${item.isVerified ? 'verified' : 'unverified'}</span></div>
+          <p class="mono">${cut(item.address)}</p>
+          <p>Added ${date(item.createdAt)}</p>
+        </article>
+      `).join('') : '<p class="empty">No saved wallets yet.</p>';
+    }
+    function renderPayouts(items, metrics) {
+      document.getElementById('payoutCount').textContent = String(metrics.payoutRequisites ?? 0);
+      document.getElementById('payoutLabel').textContent = `${items.length} saved`;
+      document.getElementById('payoutsList').innerHTML = items.length ? items.map((item) => `
+        <article class="feed-item">
+          <div class="feed-meta"><strong>${item.label || 'Payout method'}</strong><span class="badge neutral">${item.status || 'saved'}</span></div>
+          <p class="mono">${cut(item.value || item.requisiteValue || item.accountNumber)}</p>
+          <p>Added ${date(item.createdAt)}</p>
+        </article>
+      `).join('') : '<p class="empty">No payout methods yet.</p>';
+    }
+    async function loadSummary() {
+      try {
+        setNotice('');
+        const response = await fetch(`${API}/wallets/summary`);
+        const data = await response.json();
+        if (!response.ok) throw new Error(data?.message || 'Unable to load wallets summary');
+        const item = data.item || {};
+        const metrics = item.metrics || {};
+        document.getElementById('ordersCount').textContent = String(metrics.activeOrders ?? 0);
+        renderWallets(item.wallets || [], metrics);
+        renderPayouts(item.payoutRequisites || [], metrics);
+      } catch (error) {
+        console.error('wallets summary load failed', error);
+        setNotice(error.message || 'Unknown error');
+      }
+    }
+    document.getElementById('refresh').addEventListener('click', loadSummary);
+    loadSummary();
+  </script>
+</BaseLayout>

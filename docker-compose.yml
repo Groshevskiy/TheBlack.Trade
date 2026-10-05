@@ -1,0 +1,152 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: theblacktrade-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: theblacktrade
+      POSTGRES_USER: theblacktrade
+      POSTGRES_PASSWORD: theblacktrade
+    ports:
+      - "55432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./infrastructure/db/init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U theblacktrade -d theblacktrade"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: theblacktrade-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+
+  minio:
+    image: chrislusf/seaweedfs:latest
+    container_name: theblacktrade-minio
+    restart: unless-stopped
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio_data:/data
+
+  mailhog:
+    image: mailhog/mailhog:latest
+    platform: linux/amd64
+    container_name: theblacktrade-mailhog
+    restart: unless-stopped
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+
+  directus:
+    image: directus/directus:12.4.1
+    container_name: theblacktrade-directus
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      minio:
+        condition: service_started
+    ports:
+      - "8055:8055"
+    environment:
+      SECRET: super-secret-change-me
+      KEY: super-key-change-me
+      ADMIN_EMAIL: admin@theblack.trade
+      ADMIN_PASSWORD: admin123456
+      ADMIN_TOKEN: directus-admin-token-change-me
+      DB_CLIENT: pg
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: theblacktrade
+      DB_USER: theblacktrade
+      DB_PASSWORD: theblacktrade
+      CACHE_ENABLED: "true"
+      CACHE_STORE: redis
+      REDIS: redis://redis:6379
+      WEBSOCKETS_ENABLED: "true"
+      STORAGE_LOCATIONS: s3
+      STORAGE_S3_DRIVER: s3
+      STORAGE_S3_KEY: minioadmin
+      STORAGE_S3_SECRET: minioadmin
+      STORAGE_S3_BUCKET: theblacktrade
+      STORAGE_S3_ENDPOINT: http://minio:9000
+      STORAGE_S3_REGION: us-east-1
+      STORAGE_S3_FORCE_PATH_STYLE: "true"
+      CORS_ENABLED: "true"
+      CORS_ORIGIN: http://localhost:3000
+      PUBLIC_URL: http://localhost:8055
+      TELEMETRY: "false"
+    volumes:
+      - ./infrastructure/directus/extensions:/directus/extensions
+      - ./infrastructure/directus/uploads:/directus/uploads
+
+  api:
+    image: node:22-alpine
+    container_name: theblacktrade-api
+    working_dir: /app
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      directus:
+        condition: service_started
+    command: sh -c "if [ -f package.json ]; then npm install && npm run dev; else tail -f /dev/null; fi"
+    ports:
+      - "4000:4000"
+    environment:
+      NODE_ENV: development
+      PORT: 4000
+      DATABASE_URL: postgresql://theblacktrade:theblacktrade@postgres:5432/theblacktrade
+      REDIS_URL: redis://redis:6379
+      DIRECTUS_URL: http://directus:8055
+      DIRECTUS_ADMIN_TOKEN: change-me
+      JWT_SECRET: super-jwt-secret
+      STORAGE_ENDPOINT: http://minio:9000
+      STORAGE_BUCKET: theblacktrade
+      SMTP_HOST: mailhog
+      SMTP_PORT: 1025
+    volumes:
+      - ./apps/api:/app
+
+  astro:
+    image: node:22-alpine
+    container_name: theblacktrade-astro
+    working_dir: /app
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_started
+    command: sh -c "rm -rf .astro dist && npm install && npm run build && node ./dist/server/entry.mjs"
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: 3000
+      PUBLIC_API_BASE_URL: http://localhost:4000
+      PUBLIC_DIRECTUS_URL: http://localhost:8055
+    volumes:
+      - ./apps/astro-web:/app
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:

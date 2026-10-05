@@ -1,0 +1,2435 @@
+openapi: 3.1.0
+info:
+  title: TheBlack.Trade API
+  version: 1.0.0-implementation-ready
+  summary: Implementation-ready OpenAPI specification for TheBlack.Trade exchange platform
+  description: |
+    Implementation-ready OpenAPI specification for TheBlack.Trade.
+    Covers client, operator, webhook and internal APIs for crypto buy/sell flows,
+    manual and semi-automated processing, notifications and document delivery.
+jsonSchemaDialect: https://json-schema.org/draft/2020-12/schema
+servers:
+  - url: https://api.theblack.trade
+    description: Production
+  - url: https://staging-api.theblack.trade
+    description: Staging
+tags:
+  - name: Reference
+    description: Read-only dictionaries for frontend forms and pair selection
+  - name: Quotes
+    description: Quote calculation and refresh
+  - name: Wallets
+    description: Client wallets used for receiving crypto
+  - name: Payout Requisites
+    description: Client payout requisites used for fiat settlements
+  - name: Orders
+    description: Client-facing order lifecycle endpoints
+  - name: Documents
+    description: Client access to generated documents and receipts
+  - name: Notifications
+    description: Client notification history
+  - name: Operator Orders
+    description: Operator/compliance order views
+  - name: Operator Actions
+    description: Manual workflow actions performed by operators or compliance
+  - name: Webhooks
+    description: Provider callbacks
+  - name: Internal
+    description: Trusted service-to-service endpoints
+security:
+  - bearerAuth: []
+paths:
+  /api/v1/trade/assets:
+    get:
+      tags: [Reference]
+      summary: List available crypto assets
+      operationId: listAssets
+      responses:
+        '200':
+          description: Assets list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AssetsListResponse'
+              examples:
+                default:
+                  value:
+                    success: true
+                    data:
+                      - code: usdt
+                        symbol: USDT
+                        name: Tether
+                        asset_type: stablecoin
+                        is_active: true
+                    meta:
+                      request_id: req_01HZXASSETS
+                      timestamp: '2026-10-03T06:18:00Z'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+  /api/v1/trade/networks:
+    get:
+      tags: [Reference]
+      summary: List available networks
+      operationId: listNetworks
+      parameters:
+        - in: query
+          name: asset_code
+          schema:
+            $ref: '#/components/schemas/AssetCode'
+        - in: query
+          name: direction_code
+          schema:
+            $ref: '#/components/schemas/DirectionCode'
+        - in: query
+          name: is_active
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Networks list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NetworksListResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+  /api/v1/trade/pairs:
+    get:
+      tags: [Reference]
+      summary: List available exchange pairs
+      operationId: listPairs
+      parameters:
+        - in: query
+          name: direction_code
+          schema:
+            $ref: '#/components/schemas/DirectionCode'
+        - in: query
+          name: fiat_currency_code
+          schema:
+            $ref: '#/components/schemas/FiatCurrencyCode'
+        - in: query
+          name: asset_code
+          schema:
+            $ref: '#/components/schemas/AssetCode'
+        - in: query
+          name: network_code
+          schema:
+            $ref: '#/components/schemas/NetworkCode'
+      responses:
+        '200':
+          description: Exchange pairs list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PairsListResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+  /api/v1/trade/quotes/calculate:
+    post:
+      tags: [Quotes]
+      summary: Calculate quote
+      operationId: calculateQuote
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKeyOptional'
+        - $ref: '#/components/parameters/XRequestIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QuoteCalculateRequest'
+            examples:
+              buyByFiat:
+                value:
+                  direction_code: buy
+                  fiat_currency_code: rub
+                  asset_code: usdt
+                  network_code: trc20
+                  amount_type: fiat
+                  amount: '15000.00'
+      responses:
+        '200':
+          description: Quote calculated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuoteCalculateResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/RateUnavailableError'
+        '409':
+          $ref: '#/components/responses/ConflictError'
+  /api/v1/trade/quotes/{quote_id}/refresh:
+    post:
+      tags: [Quotes]
+      summary: Refresh quote
+      operationId: refreshQuote
+      parameters:
+        - $ref: '#/components/parameters/QuoteIdPath'
+        - $ref: '#/components/parameters/XRequestIdHeader'
+      responses:
+        '200':
+          description: Quote refreshed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuoteCalculateResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '409':
+          $ref: '#/components/responses/QuoteExpiredError'
+  /api/v1/account/wallets:
+    get:
+      tags: [Wallets]
+      summary: List current user wallets
+      operationId: listWallets
+      responses:
+        '200':
+          description: Wallet list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WalletsListResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+    post:
+      tags: [Wallets]
+      summary: Create wallet
+      operationId: createWallet
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKeyRecommended'
+        - $ref: '#/components/parameters/XRequestIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateWalletRequest'
+      responses:
+        '200':
+          description: Wallet created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WalletResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '409':
+          $ref: '#/components/responses/ConflictError'
+  /api/v1/account/wallets/{wallet_id}:
+    patch:
+      tags: [Wallets]
+      summary: Update wallet
+      operationId: updateWallet
+      parameters:
+        - $ref: '#/components/parameters/WalletIdPath'
+        - $ref: '#/components/parameters/XRequestIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateWalletRequest'
+      responses:
+        '200':
+          description: Wallet updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WalletResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '409':
+          $ref: '#/components/responses/ConflictError'
+  /api/v1/account/payout-requisites:
+    get:
+      tags: [Payout Requisites]
+      summary: List current user payout requisites
+      operationId: listPayoutRequisites
+      responses:
+        '200':
+          description: Payout requisites list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PayoutRequisitesListResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+    post:
+      tags: [Payout Requisites]
+      summary: Create payout requisite
+      operationId: createPayoutRequisite
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKeyRecommended'
+        - $ref: '#/components/parameters/XRequestIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePayoutRequisiteRequest'
+      responses:
+        '200':
+          description: Payout requisite created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PayoutRequisiteResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '409':
+          $ref: '#/components/responses/ConflictError'
+  /api/v1/trade/orders:
+    get:
+      tags: [Orders]
+      summary: List current user orders
+      operationId: listOrders
+      parameters:
+        - in: query
+          name: status
+          schema:
+            $ref: '#/components/schemas/OrderStatusCode'
+        - in: query
+          name: direction_code
+          schema:
+            $ref: '#/components/schemas/DirectionCode'
+        - $ref: '#/components/parameters/CursorQuery'
+        - $ref: '#/components/parameters/LimitQuery'
+      responses:
+        '200':
+          description: Orders list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrdersListResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+    post:
+      tags: [Orders]
+      summary: Create order
+      operationId: createOrder
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKeyRequired'
+        - $ref: '#/components/parameters/XRequestIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateOrderRequest'
+      responses:
+        '200':
+          description: Order created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderCreateResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '409':
+          $ref: '#/components/responses/ConflictError'
+  /api/v1/trade/orders/{order_id}:
+    get:
+      tags: [Orders]
+      summary: Get order details
+      operationId: getOrder
+      parameters:
+        - $ref: '#/components/parameters/OrderIdPath'
+      responses:
+        '200':
+          description: Order details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderDetailsResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+  /api/v1/trade/orders/{order_id}/cancel:
+    post:
+      tags: [Orders]
+      summary: Cancel order
+      operationId: cancelOrder
+      parameters:
+        - $ref: '#/components/parameters/OrderIdPath'
+        - $ref: '#/components/parameters/IdempotencyKeyRequired'
+        - $ref: '#/components/parameters/XRequestIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CancelOrderRequest'
+      responses:
+        '200':
+          description: Order cancelled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderCancelResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '409':
+          $ref: '#/components/responses/OrderNotTransitionableError'
+  /api/v1/trade/orders/{order_id}/status:
+    get:
+      tags: [Orders]
+      summary: Get order status for polling
+      operationId: getOrderStatus
+      parameters:
+        - $ref: '#/components/parameters/OrderIdPath'
+      responses:
+        '200':
+          description: Order status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderStatusResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+  /api/v1/trade/orders/{order_id}/available-actions:
+    get:
+      tags: [Orders]
+      summary: Get available client actions
+      operationId: getClientAvailableActions
+      parameters:
+        - $ref: '#/components/parameters/OrderIdPath'
+      responses:
+        '200':
+          description: Available client actions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AvailableActionsResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+  /api/v1/account/documents:
+    get:
+      tags: [Documents]
+      summary: List current user documents
+      operationId: listDocuments
+      parameters:
+        - in: query
+          name: order_id
+          schema:
+            $ref: '#/components/schemas/EntityId'
+        - in: query
+          name: document_type
+          schema:
+            $ref: '#/components/schemas/DocumentType'
+        - $ref: '#/components/parameters/CursorQuery'
+        - $ref: '#/components/parameters/LimitQuery'
+      responses:
+        '200':
+          description: Documents list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentsListResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+  /api/v1/account/documents/{document_id}:
+    get:
+      tags: [Documents]
+      summary: Get document details and temporary download link
+      operationId: getDocument
+      parameters:
+        - $ref: '#/components/parameters/DocumentIdPath'
+      responses:
+        '200':
+          description: Document details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+  /api/v1/account/notifications:
+    get:
+      tags: [Notifications]
+      summary: List current user notifications
+      operationId: listNotifications
+      parameters:
+        - $ref: '#/components/parameters/CursorQuery'
+        - $ref: '#/components/parameters/LimitQuery'
+      responses:
+        '200':
+          description: Notifications list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationsListResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+  /api/v1/operator/orders:
+    get:
+      tags: [Operator Orders]
+      summary: List operator orders
+      operationId: listOperatorOrders
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: current_status_code
+          schema:
+            $ref: '#/components/schemas/OrderStatusCode'
+        - in: query
+          name: risk_level
+          schema:
+            $ref: '#/components/schemas/RiskLevel'
+        - in: query
+          name: direction_code
+          schema:
+            $ref: '#/components/schemas/DirectionCode'
+        - in: query
+          name: created_from
+          schema:
+            $ref: '#/components/schemas/Timestamp'
+        - in: query
+          name: created_to
+          schema:
+            $ref: '#/components/schemas/Timestamp'
+        - $ref: '#/components/parameters/CursorQuery'
+        - $ref: '#/components/parameters/LimitQuery'
+      responses:
+        '200':
+          description: Operator orders list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OperatorOrdersListResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+  /api/v1/operator/orders/{order_id}:
+    get:
+      tags: [Operator Orders]
+      summary: Get operator order details
+      operationId: getOperatorOrder
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/OrderIdPath'
+      responses:
+        '200':
+          description: Operator order details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OperatorOrderDetailsResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+  /api/v1/operator/orders/{order_id}/available-actions:
+    get:
+      tags: [Operator Actions]
+      summary: Get available operator actions
+      operationId: getOperatorAvailableActions
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/OrderIdPath'
+      responses:
+        '200':
+          description: Operator actions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AvailableActionsResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+  /api/v1/operator/orders/{order_id}/confirm-fiat-payment:
+    post:
+      tags: [Operator Actions]
+      summary: Confirm fiat payment manually
+      operationId: confirmFiatPayment
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/OrderIdPath'
+        - $ref: '#/components/parameters/IdempotencyKeyRequired'
+        - $ref: '#/components/parameters/XRequestIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConfirmFiatPaymentRequest'
+      responses:
+        '200':
+          description: Fiat payment confirmed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OperatorTransitionResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '409':
+          $ref: '#/components/responses/OrderNotTransitionableError'
+  /api/v1/operator/orders/{order_id}/confirm-crypto-receipt:
+    post:
+      tags: [Operator Actions]
+      summary: Confirm crypto receipt manually
+      operationId: confirmCryptoReceipt
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/OrderIdPath'
+        - $ref: '#/components/parameters/IdempotencyKeyRequired'
+        - $ref: '#/components/parameters/XRequestIdHeader'
+      responses:
+        '200':
+          description: Crypto receipt confirmed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OperatorTransitionResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '409':
+          $ref: '#/components/responses/OrderNotTransitionableError'
+  /api/v1/operator/orders/{order_id}/approve-execution:
+    post:
+      tags: [Operator Actions]
+      summary: Approve order execution
+      operationId: approveExecution
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/OrderIdPath'
+        - $ref: '#/components/parameters/IdempotencyKeyRequired'
+        - $ref: '#/components/parameters/XRequestIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApproveExecutionRequest'
+      responses:
+        '200':
+          description: Execution approved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OperatorTransitionResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '409':
+          $ref: '#/components/responses/OrderNotTransitionableError'
+  /api/v1/operator/orders/{order_id}/hold:
+    post:
+      tags: [Operator Actions]
+      summary: Put order on hold
+      operationId: holdOrder
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/OrderIdPath'
+        - $ref: '#/components/parameters/IdempotencyKeyRequired'
+        - $ref: '#/components/parameters/XRequestIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HoldOrderRequest'
+      responses:
+        '200':
+          description: Order put on hold
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OperatorTransitionResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '409':
+          $ref: '#/components/responses/OrderNotTransitionableError'
+  /api/v1/operator/orders/{order_id}/reject:
+    post:
+      tags: [Operator Actions]
+      summary: Reject order
+      operationId: rejectOrder
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/OrderIdPath'
+        - $ref: '#/components/parameters/IdempotencyKeyRequired'
+        - $ref: '#/components/parameters/XRequestIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RejectOrderRequest'
+      responses:
+        '200':
+          description: Order rejected
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OperatorTransitionResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '409':
+          $ref: '#/components/responses/OrderNotTransitionableError'
+  /api/v1/operator/orders/{order_id}/cancel:
+    post:
+      tags: [Operator Actions]
+      summary: Cancel order by operator
+      operationId: operatorCancelOrder
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/OrderIdPath'
+        - $ref: '#/components/parameters/IdempotencyKeyRequired'
+        - $ref: '#/components/parameters/XRequestIdHeader'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OperatorCancelOrderRequest'
+      responses:
+        '200':
+          description: Order cancelled by operator
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OperatorTransitionResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '409':
+          $ref: '#/components/responses/OrderNotTransitionableError'
+  /api/v1/operator/orders/{order_id}/comments:
+    post:
+      tags: [Operator Actions]
+      summary: Add internal comment
+      operationId: addInternalComment
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/OrderIdPath'
+        - $ref: '#/components/parameters/XRequestIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddInternalCommentRequest'
+      responses:
+        '200':
+          description: Comment created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InternalCommentResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+  /api/v1/operator/orders/{order_id}/risk-flags:
+    post:
+      tags: [Operator Actions]
+      summary: Create risk flag
+      operationId: createRiskFlag
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/OrderIdPath'
+        - $ref: '#/components/parameters/XRequestIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateRiskFlagRequest'
+      responses:
+        '200':
+          description: Risk flag created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RiskFlagResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+  /api/v1/webhooks/payment/{provider_code}:
+    post:
+      tags: [Webhooks]
+      summary: Receive payment provider webhook
+      operationId: paymentWebhook
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/ProviderCodePath'
+        - $ref: '#/components/parameters/XSignatureHeader'
+        - $ref: '#/components/parameters/XTimestampHeaderOptional'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '200':
+          description: Webhook accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebhookAcceptedResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/ProviderSignatureInvalidError'
+  /api/v1/webhooks/crypto/{provider_code}:
+    post:
+      tags: [Webhooks]
+      summary: Receive crypto provider webhook
+      operationId: cryptoWebhook
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/ProviderCodePath'
+        - $ref: '#/components/parameters/XSignatureHeader'
+        - $ref: '#/components/parameters/XTimestampHeaderOptional'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '200':
+          description: Webhook accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebhookAcceptedResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/ProviderSignatureInvalidError'
+  /api/v1/internal/jobs/{job_id}/process:
+    post:
+      tags: [Internal]
+      summary: Process background job
+      operationId: processJob
+      security:
+        - serviceTokenAuth: []
+      parameters:
+        - $ref: '#/components/parameters/JobIdPath'
+        - $ref: '#/components/parameters/XRequestIdHeader'
+      responses:
+        '200':
+          description: Job processed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BasicSuccessResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+  /api/v1/internal/notifications/{notification_id}/retry:
+    post:
+      tags: [Internal]
+      summary: Retry notification delivery
+      operationId: retryNotification
+      security:
+        - serviceTokenAuth: []
+      parameters:
+        - $ref: '#/components/parameters/NotificationIdPath'
+        - $ref: '#/components/parameters/XRequestIdHeader'
+      responses:
+        '200':
+          description: Notification retry accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BasicSuccessResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+  /api/v1/internal/documents/{document_id}/regenerate:
+    post:
+      tags: [Internal]
+      summary: Regenerate document
+      operationId: regenerateDocument
+      security:
+        - serviceTokenAuth: []
+      parameters:
+        - $ref: '#/components/parameters/DocumentIdPath'
+        - $ref: '#/components/parameters/XRequestIdHeader'
+      responses:
+        '200':
+          description: Document regeneration accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BasicSuccessResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+  /api/v1/internal/payments/{payment_transaction_id}/sync:
+    post:
+      tags: [Internal]
+      summary: Sync payment status with provider
+      operationId: syncPaymentStatus
+      security:
+        - serviceTokenAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PaymentTransactionIdPath'
+        - $ref: '#/components/parameters/XRequestIdHeader'
+      responses:
+        '200':
+          description: Payment sync accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BasicSuccessResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+  /api/v1/internal/crypto/{crypto_transaction_id}/sync:
+    post:
+      tags: [Internal]
+      summary: Sync crypto transaction status with provider
+      operationId: syncCryptoStatus
+      security:
+        - serviceTokenAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CryptoTransactionIdPath'
+        - $ref: '#/components/parameters/XRequestIdHeader'
+      responses:
+        '200':
+          description: Crypto sync accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BasicSuccessResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    serviceTokenAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: ServiceToken
+  parameters:
+    IdempotencyKeyRequired:
+      in: header
+      name: Idempotency-Key
+      required: true
+      schema:
+        type: string
+        minLength: 8
+        maxLength: 255
+    IdempotencyKeyOptional:
+      in: header
+      name: Idempotency-Key
+      required: false
+      schema:
+        type: string
+        minLength: 8
+        maxLength: 255
+    IdempotencyKeyRecommended:
+      in: header
+      name: Idempotency-Key
+      required: false
+      schema:
+        type: string
+        minLength: 8
+        maxLength: 255
+    XRequestIdHeader:
+      in: header
+      name: X-Request-Id
+      required: false
+      schema:
+        type: string
+        minLength: 8
+        maxLength: 255
+    XSignatureHeader:
+      in: header
+      name: X-Signature
+      required: true
+      schema:
+        type: string
+        minLength: 8
+        maxLength: 2048
+    XTimestampHeaderOptional:
+      in: header
+      name: X-Timestamp
+      required: false
+      schema:
+        type: string
+        minLength: 10
+        maxLength: 255
+    CursorQuery:
+      in: query
+      name: cursor
+      required: false
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 255
+    LimitQuery:
+      in: query
+      name: limit
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+    QuoteIdPath:
+      in: path
+      name: quote_id
+      required: true
+      schema:
+        $ref: '#/components/schemas/EntityId'
+    WalletIdPath:
+      in: path
+      name: wallet_id
+      required: true
+      schema:
+        $ref: '#/components/schemas/EntityId'
+    OrderIdPath:
+      in: path
+      name: order_id
+      required: true
+      schema:
+        $ref: '#/components/schemas/EntityId'
+    DocumentIdPath:
+      in: path
+      name: document_id
+      required: true
+      schema:
+        $ref: '#/components/schemas/EntityId'
+    NotificationIdPath:
+      in: path
+      name: notification_id
+      required: true
+      schema:
+        $ref: '#/components/schemas/EntityId'
+    JobIdPath:
+      in: path
+      name: job_id
+      required: true
+      schema:
+        $ref: '#/components/schemas/EntityId'
+    PaymentTransactionIdPath:
+      in: path
+      name: payment_transaction_id
+      required: true
+      schema:
+        $ref: '#/components/schemas/EntityId'
+    CryptoTransactionIdPath:
+      in: path
+      name: crypto_transaction_id
+      required: true
+      schema:
+        $ref: '#/components/schemas/EntityId'
+    ProviderCodePath:
+      in: path
+      name: provider_code
+      required: true
+      schema:
+        $ref: '#/components/schemas/ProviderCode'
+  responses:
+    ValidationError:
+      description: Request validation error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            default:
+              value:
+                success: false
+                error:
+                  code: VALIDATION_ERROR
+                  message: Request payload validation failed
+                  details:
+                    field_errors:
+                      amount:
+                        - must be a positive decimal string
+                meta:
+                  request_id: req_01HZXVALIDATION
+                  timestamp: '2026-10-03T06:18:00Z'
+    UnauthorizedError:
+      description: Authentication required or invalid
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            default:
+              value:
+                success: false
+                error:
+                  code: UNAUTHORIZED
+                  message: Authentication required or token invalid
+                  details: {}
+                meta:
+                  request_id: req_01HZXUNAUTH
+                  timestamp: '2026-10-03T06:18:00Z'
+    ForbiddenError:
+      description: Actor has no permission
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            default:
+              value:
+                success: false
+                error:
+                  code: FORBIDDEN
+                  message: Access to requested resource is forbidden
+                  details: {}
+                meta:
+                  request_id: req_01HZXFORBIDDEN
+                  timestamp: '2026-10-03T06:18:00Z'
+    NotFoundError:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            default:
+              value:
+                success: false
+                error:
+                  code: NOT_FOUND
+                  message: Resource not found
+                  details: {}
+                meta:
+                  request_id: req_01HZXNOTFOUND
+                  timestamp: '2026-10-03T06:18:00Z'
+    ConflictError:
+      description: Resource conflict or duplicate processing
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            default:
+              value:
+                success: false
+                error:
+                  code: CONFLICT
+                  message: Request conflicts with current resource state
+                  details: {}
+                meta:
+                  request_id: req_01HZXCONFLICT
+                  timestamp: '2026-10-03T06:18:00Z'
+    QuoteExpiredError:
+      description: Quote expired
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            default:
+              value:
+                success: false
+                error:
+                  code: QUOTE_EXPIRED
+                  message: Quote is no longer valid
+                  details:
+                    quote_id: qt_123
+                meta:
+                  request_id: req_01HZXQUOTEEXPIRED
+                  timestamp: '2026-10-03T06:18:00Z'
+    RateUnavailableError:
+      description: Rate unavailable
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            default:
+              value:
+                success: false
+                error:
+                  code: RATE_UNAVAILABLE
+                  message: Rate is unavailable for requested pair
+                  details: {}
+                meta:
+                  request_id: req_01HZXRATEUNAVAILABLE
+                  timestamp: '2026-10-03T06:18:00Z'
+    OrderNotTransitionableError:
+      description: Order cannot move to requested state
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            default:
+              value:
+                success: false
+                error:
+                  code: ORDER_NOT_TRANSITIONABLE
+                  message: Order cannot move to requested state
+                  details:
+                    current_status_code: completed
+                meta:
+                  request_id: req_01HZXSTATE
+                  timestamp: '2026-10-03T06:18:00Z'
+    ProviderSignatureInvalidError:
+      description: Provider signature invalid
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            default:
+              value:
+                success: false
+                error:
+                  code: PROVIDER_SIGNATURE_INVALID
+                  message: Provider signature validation failed
+                  details: {}
+                meta:
+                  request_id: req_01HZXPROVSIG
+                  timestamp: '2026-10-03T06:18:00Z'
+  schemas:
+    EntityId:
+      type: string
+      minLength: 2
+      maxLength: 128
+      pattern: '^[A-Za-z0-9._:-]+$'
+    AssetCode:
+      type: string
+      minLength: 2
+      maxLength: 20
+      pattern: '^[a-z0-9_]+$'
+      examples: [usdt, btc]
+    NetworkCode:
+      type: string
+      minLength: 2
+      maxLength: 50
+      pattern: '^[a-z0-9_]+$'
+      examples: [trc20, erc20, btc]
+    FiatCurrencyCode:
+      type: string
+      minLength: 3
+      maxLength: 10
+      pattern: '^[a-z0-9_]+$'
+      examples: [rub]
+    ProviderCode:
+      type: string
+      minLength: 2
+      maxLength: 50
+      pattern: '^[a-z0-9_\-]+$'
+    DecimalString:
+      type: string
+      pattern: '^-?\d+(\.\d{1,12})?$'
+      examples: ['15000.00', '145.25000000']
+    PositiveDecimalString:
+      allOf:
+        - $ref: '#/components/schemas/DecimalString'
+      description: Positive decimal string, business validation must enforce > 0
+    Timestamp:
+      type: string
+      format: date-time
+    DirectionCode:
+      type: string
+      enum: [buy, sell]
+    OrderStatusCode:
+      type: string
+      enum:
+        - created
+        - awaiting_user_payment
+        - awaiting_fiat_confirmation
+        - fiat_confirmed
+        - awaiting_crypto_from_user
+        - crypto_detected
+        - awaiting_crypto_confirmations
+        - crypto_confirmed
+        - awaiting_operator_review
+        - manual_hold
+        - approved_for_execution
+        - executing_exchange
+        - executing_payout
+        - completed
+        - cancelled
+        - rejected
+        - expired
+        - failed
+    RiskLevel:
+      type: string
+      enum: [low, medium, high, critical]
+    RequisiteType:
+      type: string
+      enum: [bank_card, bank_account, sbp, other]
+    DocumentType:
+      type: string
+      enum: [receipt, order_confirmation, payout_confirmation, exchange_completion_statement, compliance_notice, other]
+    NotificationStatus:
+      type: string
+      enum: [queued, sent, failed, cancelled]
+    OperatorActionKind:
+      type: string
+      enum: [primary, secondary, warning, destructive]
+    Meta:
+      type: object
+      additionalProperties: false
+      required: [request_id, timestamp]
+      properties:
+        request_id:
+          type: string
+          minLength: 1
+          maxLength: 255
+        timestamp:
+          $ref: '#/components/schemas/Timestamp'
+        pagination:
+          $ref: '#/components/schemas/PaginationMeta'
+    PaginationMeta:
+      type: object
+      additionalProperties: false
+      required: [next_cursor, limit, has_more]
+      properties:
+        next_cursor:
+          type: string
+          nullable: true
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+        has_more:
+          type: boolean
+    ErrorBody:
+      type: object
+      additionalProperties: false
+      required: [code, message, details]
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        details:
+          type: object
+          additionalProperties: true
+    ErrorResponse:
+      type: object
+      additionalProperties: false
+      required: [success, error, meta]
+      properties:
+        success:
+          type: boolean
+          const: false
+        error:
+          $ref: '#/components/schemas/ErrorBody'
+        meta:
+          $ref: '#/components/schemas/Meta'
+    BasicSuccessResponse:
+      type: object
+      additionalProperties: false
+      required: [success, data, meta]
+      properties:
+        success:
+          type: boolean
+          const: true
+        data:
+          type: object
+          additionalProperties: true
+        meta:
+          $ref: '#/components/schemas/Meta'
+    Asset:
+      type: object
+      additionalProperties: false
+      required: [code, symbol, name, asset_type, is_active]
+      properties:
+        code:
+          $ref: '#/components/schemas/AssetCode'
+        symbol:
+          type: string
+          minLength: 2
+          maxLength: 20
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        asset_type:
+          type: string
+          enum: [crypto, stablecoin]
+        is_active:
+          type: boolean
+    Network:
+      type: object
+      additionalProperties: false
+      required: [code, name, is_active]
+      properties:
+        code:
+          $ref: '#/components/schemas/NetworkCode'
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        protocol:
+          type: string
+          maxLength: 50
+          nullable: true
+        is_active:
+          type: boolean
+    ExchangePair:
+      type: object
+      additionalProperties: false
+      required: [id, direction_code, fiat_currency_code, asset_code, network_code, is_active]
+      properties:
+        id:
+          $ref: '#/components/schemas/EntityId'
+        direction_code:
+          $ref: '#/components/schemas/DirectionCode'
+        fiat_currency_code:
+          $ref: '#/components/schemas/FiatCurrencyCode'
+        asset_code:
+          $ref: '#/components/schemas/AssetCode'
+        network_code:
+          $ref: '#/components/schemas/NetworkCode'
+        min_fiat_amount:
+          allOf:
+            - $ref: '#/components/schemas/DecimalString'
+          nullable: true
+        max_fiat_amount:
+          allOf:
+            - $ref: '#/components/schemas/DecimalString'
+          nullable: true
+        min_crypto_amount:
+          allOf:
+            - $ref: '#/components/schemas/DecimalString'
+          nullable: true
+        max_crypto_amount:
+          allOf:
+            - $ref: '#/components/schemas/DecimalString'
+          nullable: true
+        is_active:
+          type: boolean
+    FeeBreakdown:
+      type: object
+      additionalProperties: false
+      required: [fee_model, fee_amount_fiat, fee_amount_crypto]
+      properties:
+        fee_model:
+          type: string
+          enum: [flat, percent, mixed]
+        fee_amount_fiat:
+          $ref: '#/components/schemas/DecimalString'
+        fee_amount_crypto:
+          $ref: '#/components/schemas/DecimalString'
+    QuoteLimits:
+      type: object
+      additionalProperties: false
+      required: [min_amount, max_amount]
+      properties:
+        min_amount:
+          $ref: '#/components/schemas/DecimalString'
+        max_amount:
+          $ref: '#/components/schemas/DecimalString'
+    QuoteData:
+      type: object
+      additionalProperties: false
+      required:
+        - quote_id
+        - direction_code
+        - fiat_currency_code
+        - asset_code
+        - network_code
+        - input_amount
+        - output_amount
+        - exchange_rate
+        - fee
+        - limits
+        - expires_at
+      properties:
+        quote_id:
+          $ref: '#/components/schemas/EntityId'
+        direction_code:
+          $ref: '#/components/schemas/DirectionCode'
+        fiat_currency_code:
+          $ref: '#/components/schemas/FiatCurrencyCode'
+        asset_code:
+          $ref: '#/components/schemas/AssetCode'
+        network_code:
+          $ref: '#/components/schemas/NetworkCode'
+        input_amount:
+          $ref: '#/components/schemas/DecimalString'
+        output_amount:
+          $ref: '#/components/schemas/DecimalString'
+        exchange_rate:
+          $ref: '#/components/schemas/DecimalString'
+        fee:
+          $ref: '#/components/schemas/FeeBreakdown'
+        limits:
+          $ref: '#/components/schemas/QuoteLimits'
+        expires_at:
+          $ref: '#/components/schemas/Timestamp'
+    QuoteCalculateRequest:
+      type: object
+      additionalProperties: false
+      required: [direction_code, fiat_currency_code, asset_code, network_code, amount_type, amount]
+      properties:
+        direction_code:
+          $ref: '#/components/schemas/DirectionCode'
+        fiat_currency_code:
+          $ref: '#/components/schemas/FiatCurrencyCode'
+        asset_code:
+          $ref: '#/components/schemas/AssetCode'
+        network_code:
+          $ref: '#/components/schemas/NetworkCode'
+        amount_type:
+          type: string
+          enum: [fiat, crypto]
+        amount:
+          $ref: '#/components/schemas/DecimalString'
+    QuoteCalculateResponse:
+      type: object
+      additionalProperties: false
+      required: [success, data, meta]
+      properties:
+        success:
+          type: boolean
+          const: true
+        data:
+          $ref: '#/components/schemas/QuoteData'
+        meta:
+          $ref: '#/components/schemas/Meta'
+    Wallet:
+      type: object
+      additionalProperties: false
+      required: [id, label, asset_code, network_code, address_masked, status, is_default, created_at]
+      properties:
+        id:
+          $ref: '#/components/schemas/EntityId'
+        label:
+          type: string
+          minLength: 1
+          maxLength: 150
+        asset_code:
+          $ref: '#/components/schemas/AssetCode'
+        network_code:
+          $ref: '#/components/schemas/NetworkCode'
+        address_masked:
+          type: string
+          minLength: 6
+          maxLength: 255
+        destination_tag:
+          type: string
+          maxLength: 128
+          nullable: true
+        status:
+          type: string
+          enum: [active, archived, pending_verification]
+        is_default:
+          type: boolean
+        created_at:
+          $ref: '#/components/schemas/Timestamp'
+    CreateWalletRequest:
+      type: object
+      additionalProperties: false
+      required: [label, asset_code, network_code, address, is_default]
+      properties:
+        label:
+          type: string
+          minLength: 1
+          maxLength: 150
+        asset_code:
+          $ref: '#/components/schemas/AssetCode'
+        network_code:
+          $ref: '#/components/schemas/NetworkCode'
+        address:
+          type: string
+          minLength: 6
+          maxLength: 255
+        destination_tag:
+          type: string
+          maxLength: 128
+          nullable: true
+        is_default:
+          type: boolean
+    UpdateWalletRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        label:
+          type: string
+          minLength: 1
+          maxLength: 150
+        destination_tag:
+          type: string
+          maxLength: 128
+          nullable: true
+        is_default:
+          type: boolean
+        status:
+          type: string
+          enum: [active, archived]
+    WalletResponse:
+      type: object
+      additionalProperties: false
+      required: [success, data, meta]
+      properties:
+        success:
+          type: boolean
+          const: true
+        data:
+          $ref: '#/components/schemas/Wallet'
+        meta:
+          $ref: '#/components/schemas/Meta'
+    PayoutRequisite:
+      type: object
+      additionalProperties: false
+      required: [id, requisite_type, label, holder_name, masked_value, status, is_default, created_at]
+      properties:
+        id:
+          $ref: '#/components/schemas/EntityId'
+        requisite_type:
+          $ref: '#/components/schemas/RequisiteType'
+        label:
+          type: string
+          minLength: 1
+          maxLength: 150
+        holder_name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        bank_name:
+          type: string
+          maxLength: 200
+          nullable: true
+        masked_value:
+          type: string
+          minLength: 4
+          maxLength: 128
+        status:
+          type: string
+          enum: [active, archived, pending_verification]
+        is_default:
+          type: boolean
+        created_at:
+          $ref: '#/components/schemas/Timestamp'
+    CreatePayoutRequisiteRequest:
+      type: object
+      additionalProperties: false
+      required: [requisite_type, label, holder_name, value, is_default]
+      properties:
+        requisite_type:
+          $ref: '#/components/schemas/RequisiteType'
+        label:
+          type: string
+          minLength: 1
+          maxLength: 150
+        holder_name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        bank_name:
+          type: string
+          maxLength: 200
+          nullable: true
+        value:
+          type: string
+          minLength: 4
+          maxLength: 255
+        is_default:
+          type: boolean
+    PayoutRequisiteResponse:
+      type: object
+      additionalProperties: false
+      required: [success, data, meta]
+      properties:
+        success:
+          type: boolean
+          const: true
+        data:
+          $ref: '#/components/schemas/PayoutRequisite'
+        meta:
+          $ref: '#/components/schemas/Meta'
+    CreateOrderRequest:
+      type: object
+      additionalProperties: false
+      required: [quote_id]
+      properties:
+        quote_id:
+          $ref: '#/components/schemas/EntityId'
+        wallet_id:
+          allOf:
+            - $ref: '#/components/schemas/EntityId'
+          nullable: true
+        payout_requisite_id:
+          allOf:
+            - $ref: '#/components/schemas/EntityId'
+          nullable: true
+        client_comment:
+          type: string
+          maxLength: 1000
+          nullable: true
+      oneOf:
+        - required: [quote_id, wallet_id]
+        - required: [quote_id, payout_requisite_id]
+    NextAction:
+      type: object
+      additionalProperties: false
+      required: [code, label]
+      properties:
+        code:
+          type: string
+        label:
+          type: string
+    PaymentInstructions:
+      type: object
+      additionalProperties: false
+      required: [provider_code, payment_reference, payment_url]
+      properties:
+        provider_code:
+          $ref: '#/components/schemas/ProviderCode'
+        payment_reference:
+          type: string
+          minLength: 1
+          maxLength: 255
+        payment_url:
+          type: string
+          format: uri
+    OrderSummary:
+      type: object
+      additionalProperties: false
+      required:
+        - order_id
+        - order_no
+        - direction_code
+        - current_status_code
+        - ui_status_label
+        - amount_fiat
+        - amount_crypto
+        - exchange_rate
+      properties:
+        order_id:
+          $ref: '#/components/schemas/EntityId'
+        order_no:
+          type: string
+          minLength: 1
+          maxLength: 64
+        direction_code:
+          $ref: '#/components/schemas/DirectionCode'
+        current_status_code:
+          $ref: '#/components/schemas/OrderStatusCode'
+        ui_status_label:
+          type: string
+          minLength: 1
+          maxLength: 255
+        amount_fiat:
+          $ref: '#/components/schemas/DecimalString'
+        amount_crypto:
+          $ref: '#/components/schemas/DecimalString'
+        exchange_rate:
+          $ref: '#/components/schemas/DecimalString'
+        asset_code:
+          $ref: '#/components/schemas/AssetCode'
+        network_code:
+          $ref: '#/components/schemas/NetworkCode'
+        expires_at:
+          allOf:
+            - $ref: '#/components/schemas/Timestamp'
+          nullable: true
+        created_at:
+          allOf:
+            - $ref: '#/components/schemas/Timestamp'
+          nullable: true
+        completed_at:
+          allOf:
+            - $ref: '#/components/schemas/Timestamp'
+          nullable: true
+    OrderCreateData:
+      allOf:
+        - $ref: '#/components/schemas/OrderSummary'
+        - type: object
+          additionalProperties: false
+          required: [next_action]
+          properties:
+            next_action:
+              $ref: '#/components/schemas/NextAction'
+            payment_instructions:
+              allOf:
+                - $ref: '#/components/schemas/PaymentInstructions'
+              nullable: true
+    OrderCreateResponse:
+      type: object
+      additionalProperties: false
+      required: [success, data, meta]
+      properties:
+        success:
+          type: boolean
+          const: true
+        data:
+          $ref: '#/components/schemas/OrderCreateData'
+        meta:
+          $ref: '#/components/schemas/Meta'
+    OrderStatusHistoryItem:
+      type: object
+      additionalProperties: false
+      required: [status_code, ui_status_label, created_at]
+      properties:
+        status_code:
+          $ref: '#/components/schemas/OrderStatusCode'
+        ui_status_label:
+          type: string
+        created_at:
+          $ref: '#/components/schemas/Timestamp'
+    DocumentLink:
+      type: object
+      additionalProperties: false
+      required: [id, document_type, file_name]
+      properties:
+        id:
+          $ref: '#/components/schemas/EntityId'
+        document_type:
+          $ref: '#/components/schemas/DocumentType'
+        file_name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        download_url:
+          type: string
+          format: uri
+          nullable: true
+    OrderDetailsData:
+      allOf:
+        - $ref: '#/components/schemas/OrderSummary'
+        - type: object
+          additionalProperties: false
+          properties:
+            status_history:
+              type: array
+              items:
+                $ref: '#/components/schemas/OrderStatusHistoryItem'
+            documents:
+              type: array
+              items:
+                $ref: '#/components/schemas/DocumentLink'
+            next_action:
+              allOf:
+                - $ref: '#/components/schemas/NextAction'
+              nullable: true
+            payment_instructions:
+              allOf:
+                - $ref: '#/components/schemas/PaymentInstructions'
+              nullable: true
+    OrderDetailsResponse:
+      type: object
+      additionalProperties: false
+      required: [success, data, meta]
+      properties:
+        success:
+          type: boolean
+          const: true
+        data:
+          $ref: '#/components/schemas/OrderDetailsData'
+        meta:
+          $ref: '#/components/schemas/Meta'
+    CancelOrderRequest:
+      type: object
+      additionalProperties: false
+      required: [reason]
+      properties:
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 100
+    OrderCancelResponse:
+      type: object
+      additionalProperties: false
+      required: [success, data, meta]
+      properties:
+        success:
+          type: boolean
+          const: true
+        data:
+          type: object
+          additionalProperties: false
+          required: [order_id, current_status_code, ui_status_label, cancelled_at]
+          properties:
+            order_id:
+              $ref: '#/components/schemas/EntityId'
+            current_status_code:
+              $ref: '#/components/schemas/OrderStatusCode'
+            ui_status_label:
+              type: string
+            cancelled_at:
+              $ref: '#/components/schemas/Timestamp'
+        meta:
+          $ref: '#/components/schemas/Meta'
+    OrderStatusResponse:
+      type: object
+      additionalProperties: false
+      required: [success, data, meta]
+      properties:
+        success:
+          type: boolean
+          const: true
+        data:
+          type: object
+          additionalProperties: false
+          required: [order_id, current_status_code, ui_status_label, progress_step, progress_total_steps, updated_at]
+          properties:
+            order_id:
+              $ref: '#/components/schemas/EntityId'
+            current_status_code:
+              $ref: '#/components/schemas/OrderStatusCode'
+            ui_status_label:
+              type: string
+            progress_step:
+              type: integer
+              minimum: 1
+            progress_total_steps:
+              type: integer
+              minimum: 1
+            updated_at:
+              $ref: '#/components/schemas/Timestamp'
+        meta:
+          $ref: '#/components/schemas/Meta'
+    AvailableAction:
+      type: object
+      additionalProperties: false
+      required: [code, label, kind]
+      properties:
+        code:
+          type: string
+        label:
+          type: string
+        kind:
+          $ref: '#/components/schemas/OperatorActionKind'
+    AvailableActionsResponse:
+      type: object
+      additionalProperties: false
+      required: [success, data, meta]
+      properties:
+        success:
+          type: boolean
+          const: true
+        data:
+          type: object
+          additionalProperties: false
+          required: [actions]
+          properties:
+            actions:
+              type: array
+              items:
+                $ref: '#/components/schemas/AvailableAction'
+        meta:
+          $ref: '#/components/schemas/Meta'
+    NotificationItem:
+      type: object
+      additionalProperties: false
+      required: [id, channel, template_code, subject, status, created_at]
+      properties:
+        id:
+          $ref: '#/components/schemas/EntityId'
+        channel:
+          type: string
+          enum: [email]
+        template_code:
+          type: string
+          minLength: 1
+          maxLength: 100
+        subject:
+          type: string
+          minLength: 1
+          maxLength: 255
+        status:
+          $ref: '#/components/schemas/NotificationStatus'
+        created_at:
+          $ref: '#/components/schemas/Timestamp'
+        sent_at:
+          allOf:
+            - $ref: '#/components/schemas/Timestamp'
+          nullable: true
+    DocumentItem:
+      type: object
+      additionalProperties: false
+      required: [id, document_type, file_name, created_at]
+      properties:
+        id:
+          $ref: '#/components/schemas/EntityId'
+        order_id:
+          allOf:
+            - $ref: '#/components/schemas/EntityId'
+          nullable: true
+        document_type:
+          $ref: '#/components/schemas/DocumentType'
+        file_name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        created_at:
+          $ref: '#/components/schemas/Timestamp'
+    DocumentDetails:
+      allOf:
+        - $ref: '#/components/schemas/DocumentItem'
+        - type: object
+          additionalProperties: false
+          required: [download_url, mime_type]
+          properties:
+            download_url:
+              type: string
+              format: uri
+            mime_type:
+              type: string
+              minLength: 3
+              maxLength: 100
+    InternalComment:
+      type: object
+      additionalProperties: false
+      required: [id, comment, is_private, created_at]
+      properties:
+        id:
+          $ref: '#/components/schemas/EntityId'
+        comment:
+          type: string
+          minLength: 1
+          maxLength: 5000
+        is_private:
+          type: boolean
+        created_at:
+          $ref: '#/components/schemas/Timestamp'
+    RiskFlag:
+      type: object
+      additionalProperties: false
+      required: [id, risk_flag_code, severity, status, created_at]
+      properties:
+        id:
+          $ref: '#/components/schemas/EntityId'
+        risk_flag_code:
+          type: string
+          minLength: 1
+          maxLength: 100
+        severity:
+          $ref: '#/components/schemas/RiskLevel'
+        status:
+          type: string
+          enum: [open, reviewed, resolved, dismissed]
+        comment:
+          type: string
+          maxLength: 5000
+          nullable: true
+        created_at:
+          $ref: '#/components/schemas/Timestamp'
+    OperatorOrderDetailsData:
+      allOf:
+        - $ref: '#/components/schemas/OrderDetailsData'
+        - type: object
+          additionalProperties: false
+          properties:
+            risk_level:
+              $ref: '#/components/schemas/RiskLevel'
+            internal_comments:
+              type: array
+              items:
+                $ref: '#/components/schemas/InternalComment'
+            risk_flags:
+              type: array
+              items:
+                $ref: '#/components/schemas/RiskFlag'
+            masked_requisites:
+              type: object
+              additionalProperties: true
+            available_actions:
+              type: array
+              items:
+                $ref: '#/components/schemas/AvailableAction'
+    ConfirmFiatPaymentRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        comment:
+          type: string
+          maxLength: 1000
+          nullable: true
+        provider_reference:
+          type: string
+          maxLength: 255
+          nullable: true
+    ApproveExecutionRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        comment:
+          type: string
+          maxLength: 1000
+          nullable: true
+    HoldOrderRequest:
+      type: object
+      additionalProperties: false
+      required: [reason_code, comment]
+      properties:
+        reason_code:
+          type: string
+          minLength: 1
+          maxLength: 100
+        comment:
+          type: string
+          minLength: 1
+          maxLength: 1000
+    RejectOrderRequest:
+      type: object
+      additionalProperties: false
+      required: [reason_code, comment]
+      properties:
+        reason_code:
+          type: string
+          minLength: 1
+          maxLength: 100
+        comment:
+          type: string
+          minLength: 1
+          maxLength: 1000
+    OperatorCancelOrderRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        reason_code:
+          type: string
+          minLength: 1
+          maxLength: 100
+          nullable: true
+        comment:
+          type: string
+          maxLength: 1000
+          nullable: true
+    AddInternalCommentRequest:
+      type: object
+      additionalProperties: false
+      required: [comment, is_private]
+      properties:
+        comment:
+          type: string
+          minLength: 1
+          maxLength: 5000
+        is_private:
+          type: boolean
+    CreateRiskFlagRequest:
+      type: object
+      additionalProperties: false
+      required: [risk_flag_code, severity]
+      properties:
+        risk_flag_code:
+          type: string
+          minLength: 1
+          maxLength: 100
+        severity:
+          $ref: '#/components/schemas/RiskLevel'
+        comment:
+          type: string
+          maxLength: 5000
+          nullable: true
+    OperatorTransitionData:
+      type: object
+      additionalProperties: false
+      required: [order_id, previous_status_code, current_status_code, ui_status_label]
+      properties:
+        order_id:
+          $ref: '#/components/schemas/EntityId'
+        previous_status_code:
+          $ref: '#/components/schemas/OrderStatusCode'
+        current_status_code:
+          $ref: '#/components/schemas/OrderStatusCode'
+        ui_status_label:
+          type: string
+        available_actions:
+          type: array
+          items:
+            type: string
+    OperatorTransitionResponse:
+      type: object
+      additionalProperties: false
+      required: [success, data, meta]
+      properties:
+        success:
+          type: boolean
+          const: true
+        data:
+          $ref: '#/components/schemas/OperatorTransitionData'
+        meta:
+          $ref: '#/components/schemas/Meta'
+    InternalCommentResponse:
+      type: object
+      additionalProperties: false
+      required: [success, data, meta]
+      properties:
+        success:
+          type: boolean
+          const: true
+        data:
+          $ref: '#/components/schemas/InternalComment'
+        meta:
+          $ref: '#/components/schemas/Meta'
+    RiskFlagResponse:
+      type: object
+      additionalProperties: false
+      required: [success, data, meta]
+      properties:
+        success:
+          type: boolean
+          const: true
+        data:
+          $ref: '#/components/schemas/RiskFlag'
+        meta:
+          $ref: '#/components/schemas/Meta'
+    WebhookAcceptedResponse:
+      type: object
+      additionalProperties: false
+      required: [success, data, meta]
+      properties:
+        success:
+          type: boolean
+          const: true
+        data:
+          type: object
+          additionalProperties: false
+          required: [accepted]
+          properties:
+            accepted:
+              type: boolean
+              const: true
+        meta:
+          $ref: '#/components/schemas/Meta'
+    AssetsListResponse:
+      type: object
+      additionalProperties: false
+      required: [success, data, meta]
+      properties:
+        success:
+          type: boolean
+          const: true
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Asset'
+        meta:
+          $ref: '#/components/schemas/Meta'
+    NetworksListResponse:
+      type: object
+      additionalProperties: false
+      required: [success, data, meta]
+      properties:
+        success:
+          type: boolean
+          const: true
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Network'
+        meta:
+          $ref: '#/components/schemas/Meta'
+    PairsListResponse:
+      type: object
+      additionalProperties: false
+      required: [success, data, meta]
+      properties:
+        success:
+          type: boolean
+          const: true
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExchangePair'
+        meta:
+          $ref: '#/components/schemas/Meta'
+    WalletsListResponse:
+      type: object
+      additionalProperties: false
+      required: [success, data, meta]
+      properties:
+        success:
+          type: boolean
+          const: true
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Wallet'
+        meta:
+          $ref: '#/components/schemas/Meta'
+    PayoutRequisitesListResponse:
+      type: object
+      additionalProperties: false
+      required: [success, data, meta]
+      properties:
+        success:
+          type: boolean
+          const: true
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/PayoutRequisite'
+        meta:
+          $ref: '#/components/schemas/Meta'
+    OrdersListResponse:
+      type: object
+      additionalProperties: false
+      required: [success, data, meta]
+      properties:
+        success:
+          type: boolean
+          const: true
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderSummary'
+        meta:
+          $ref: '#/components/schemas/Meta'
+    DocumentsListResponse:
+      type: object
+      additionalProperties: false
+      required: [success, data, meta]
+      properties:
+        success:
+          type: boolean
+          const: true
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/DocumentItem'
+        meta:
+          $ref: '#/components/schemas/Meta'
+    DocumentResponse:
+      type: object
+      additionalProperties: false
+      required: [success, data, meta]
+      properties:
+        success:
+          type: boolean
+          const: true
+        data:
+          $ref: '#/components/schemas/DocumentDetails'
+        meta:
+          $ref: '#/components/schemas/Meta'
+    NotificationsListResponse:
+      type: object
+      additionalProperties: false
+      required: [success, data, meta]
+      properties:
+        success:
+          type: boolean
+          const: true
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/NotificationItem'
+        meta:
+          $ref: '#/components/schemas/Meta'
+    OperatorOrdersListResponse:
+      type: object
+      additionalProperties: false
+      required: [success, data, meta]
+      properties:
+        success:
+          type: boolean
+          const: true
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderSummary'
+        meta:
+          $ref: '#/components/schemas/Meta'
+    OperatorOrderDetailsResponse:
+      type: object
+      additionalProperties: false
+      required: [success, data, meta]
+      properties:
+        success:
+          type: boolean
+          const: true
+        data:
+          $ref: '#/components/schemas/OperatorOrderDetailsData'
+        meta:
+          $ref: '#/components/schemas/Meta'

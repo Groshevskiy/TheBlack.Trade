@@ -1,0 +1,175 @@
+import { pgTable, uuid, text, timestamp, boolean, numeric, jsonb, integer } from 'drizzle-orm/pg-core';
+export const tbUsers = pgTable('tb_users', {
+    id: uuid('id').defaultRandom().primaryKey(),
+    directusUserId: uuid('directus_user_id'),
+    email: text('email'),
+    phone: text('phone'),
+    telegram: text('telegram'),
+    locale: text('locale'),
+    kycLevel: text('kyc_level'),
+    status: text('status'),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+});
+export const tbAssets = pgTable('tb_assets', {
+    id: uuid('id').defaultRandom().primaryKey(),
+    code: text('code').notNull(),
+    name: text('name').notNull(),
+    precision: integer('precision').notNull(),
+    isActive: boolean('is_active').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+});
+export const tbNetworks = pgTable('tb_networks', {
+    id: uuid('id').defaultRandom().primaryKey(),
+    assetId: uuid('asset_id').notNull(),
+    code: text('code').notNull(),
+    directionCode: text('direction_code').notNull(),
+    confirmationsRequired: integer('confirmations_required').notNull(),
+    isActive: boolean('is_active').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+});
+export const tbFiatCurrencies = pgTable('tb_fiat_currencies', {
+    id: uuid('id').defaultRandom().primaryKey(),
+    code: text('code').notNull(),
+    name: text('name').notNull(),
+    precision: integer('precision').notNull(),
+    isActive: boolean('is_active').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+});
+export const tbPairs = pgTable('tb_pairs', {
+    id: uuid('id').defaultRandom().primaryKey(),
+    directionCode: text('direction_code').notNull(),
+    fiatCurrencyId: uuid('fiat_currency_id').notNull(),
+    assetId: uuid('asset_id').notNull(),
+    networkId: uuid('network_id').notNull(),
+    minAmount: numeric('min_amount', { precision: 20, scale: 8 }),
+    maxAmount: numeric('max_amount', { precision: 20, scale: 8 }),
+    feeProfile: jsonb('fee_profile').default({}),
+    isActive: boolean('is_active').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+});
+export const tbWallets = pgTable('tb_wallets', {
+    id: uuid('id').defaultRandom().primaryKey(),
+    userId: uuid('user_id').notNull(),
+    assetId: uuid('asset_id').notNull(),
+    networkId: uuid('network_id').notNull(),
+    address: text('address').notNull(),
+    memo: text('memo'),
+    label: text('label'),
+    isVerified: boolean('is_verified').notNull().default(false),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+});
+export const tbPayoutRequisites = pgTable('tb_payout_requisites', {
+    id: uuid('id').defaultRandom().primaryKey(),
+    userId: uuid('user_id').notNull(),
+    fiatCurrencyId: uuid('fiat_currency_id').notNull(),
+    requisiteType: text('requisite_type').notNull(),
+    bankName: text('bank_name'),
+    cardMask: text('card_mask'),
+    sbpPhone: text('sbp_phone'),
+    ownerName: text('owner_name'),
+    status: text('status').notNull().default('active'),
+    metadata: jsonb('metadata').default({}),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+});
+export const tbQuotes = pgTable('tb_quotes', {
+    id: uuid('id').defaultRandom().primaryKey(),
+    quoteUid: text('quote_uid').notNull(),
+    pairId: uuid('pair_id').notNull(),
+    amountType: text('amount_type').notNull(),
+    amountIn: numeric('amount_in', { precision: 20, scale: 8 }).notNull(),
+    amountOut: numeric('amount_out', { precision: 20, scale: 8 }).notNull(),
+    rate: numeric('rate', { precision: 20, scale: 8 }).notNull(),
+    feeBreakdown: jsonb('fee_breakdown').default({}),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+});
+export const tbOrders = pgTable('tb_orders', {
+    id: uuid('id').defaultRandom().primaryKey(),
+    publicId: text('public_id').notNull(),
+    userId: uuid('user_id').notNull(),
+    quoteId: uuid('quote_id'),
+    directionCode: text('direction_code').notNull(),
+    statusCode: text('status_code').notNull(),
+    fiatAmount: numeric('fiat_amount', { precision: 20, scale: 8 }),
+    cryptoAmount: numeric('crypto_amount', { precision: 20, scale: 8 }),
+    rate: numeric('rate', { precision: 20, scale: 8 }),
+    payoutRequisiteId: uuid('payout_requisite_id'),
+    walletId: uuid('wallet_id'),
+    metadata: jsonb('metadata').default({}),
+    expiresAt: timestamp('expires_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+});
+export const tbWebhookEvents = pgTable('tb_webhook_events', {
+    id: uuid('id').defaultRandom().primaryKey(),
+    eventType: text('event_type').notNull(),
+    entityType: text('entity_type').notNull(),
+    entityId: text('entity_id').notNull(),
+    payloadJson: jsonb('payload_json').default({}),
+    status: text('status').notNull().default('pending'),
+    deliveredAt: timestamp('delivered_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+});
+export const tbWebhookAttempts = pgTable('tb_webhook_attempts', {
+    id: uuid('id').defaultRandom().primaryKey(),
+    webhookEventId: uuid('webhook_event_id').notNull(),
+    responseCode: integer('response_code'),
+    responseBody: text('response_body'),
+    attemptedAt: timestamp('attempted_at', { withTimezone: true }).defaultNow(),
+});
+export const tbAuditLogs = pgTable('tb_audit_logs', {
+    id: uuid('id').defaultRandom().primaryKey(),
+    actorType: text('actor_type'),
+    actorId: text('actor_id'),
+    action: text('action').notNull(),
+    entityType: text('entity_type').notNull(),
+    entityId: text('entity_id'),
+    diffJson: jsonb('diff_json').default({}),
+    requestId: text('request_id'),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+});
+export const tbDocuments = pgTable('tb_documents', {
+    id: uuid('id').defaultRandom().primaryKey(),
+    ownerUserId: uuid('owner_user_id'),
+    orderId: uuid('order_id'),
+    documentType: text('document_type').notNull(),
+    fileId: text('file_id'),
+    status: text('status').notNull().default('pending'),
+    metadataJson: jsonb('metadata_json').default({}),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+});
+export const tbNotifications = pgTable('tb_notifications', {
+    id: uuid('id').defaultRandom().primaryKey(),
+    userId: uuid('user_id'),
+    channel: text('channel').notNull(),
+    templateCode: text('template_code'),
+    title: text('title'),
+    body: text('body'),
+    readAt: timestamp('read_at', { withTimezone: true }),
+    payloadJson: jsonb('payload_json').default({}),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+});
+export const tbOrderActions = pgTable('tb_order_actions', {
+    id: uuid('id').defaultRandom().primaryKey(),
+    orderId: uuid('order_id').notNull(),
+    actionCode: text('action_code').notNull(),
+    requestId: text('request_id'),
+    idempotencyKey: text('idempotency_key'),
+    operatorId: text('operator_id'),
+    resultStatus: text('result_status'),
+    payloadJson: jsonb('payload_json').default({}),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+});
+export const tbOrderTimeline = pgTable('tb_order_timeline', {
+    id: uuid('id').defaultRandom().primaryKey(),
+    orderId: uuid('order_id').notNull(),
+    eventType: text('event_type').notNull(),
+    fromStatus: text('from_status'),
+    toStatus: text('to_status'),
+    actorType: text('actor_type'),
+    actorId: text('actor_id'),
+    payloadJson: jsonb('payload_json').default({}),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+});
+//# sourceMappingURL=schema.js.map

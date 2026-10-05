@@ -1,0 +1,7 @@
+[
+  { "name": "client", "description": "Customer role" },
+  { "name": "operator", "description": "Operations role" },
+  { "name": "supervisor", "description": "Supervisor role" },
+  { "name": "service", "description": "Machine/service role" },
+  { "name": "admin", "description": "System admin role" }
+]

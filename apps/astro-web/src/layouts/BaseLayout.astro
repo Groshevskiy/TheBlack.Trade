@@ -1,0 +1,37 @@
+---
+export interface Props { title?: string }
+const { title = 'TheBlack.Trade' } = Astro.props;
+---
+<html lang='ru'>
+  <head>
+    <meta charset='utf-8' />
+    <meta name='viewport' content='width=device-width, initial-scale=1' />
+    <title>{title}</title>
+    <style>
+      :root { color-scheme: dark light; font-family: Inter, system-ui, sans-serif; }
+      body { margin: 0; background: #0f1115; color: #f5f7fa; }
+      a { color: #7dd3fc; text-decoration: none; }
+      header, main { max-width: 1100px; margin: 0 auto; padding: 24px; }
+      nav { display: flex; gap: 16px; flex-wrap: wrap; }
+      .card { background: #171a21; border: 1px solid #2a2f3a; border-radius: 12px; padding: 20px; }
+      .grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>TheBlack.Trade</h1>
+      <nav>
+        <a href='/'>Home</a>
+        <a href='/dashboard'>Dashboard</a>
+        <a href='/orders'>Orders</a>
+        <a href='/wallets'>Wallets</a>
+        <a href='/notifications'>Notifications</a>
+        <a href='/account'>Account</a>
+        <a href='/operator/orders'>Operator</a>
+      </nav>
+    </header>
+    <main>
+      <slot />
+    </main>
+  </body>
+</html>

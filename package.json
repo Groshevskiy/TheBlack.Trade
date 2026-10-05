@@ -1,0 +1,13 @@
+{
+  "name": "theblacktrade-workspace",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "verify:static": "npm run verify:api && npm run verify:web",
+    "verify:ready": "npm --prefix apps/api run check:ready",
+    "verify:http": "npm --prefix apps/api run test:smoke:summary",
+    "verify": "npm run verify:static && npm run verify:ready && npm run verify:http",
+    "verify:api": "npm --prefix apps/api run build && npm --prefix apps/api test -- --run src/modules/summary/summary.endpoints.spec.ts",
+    "verify:web": "npm --prefix apps/astro-web run build"
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "meta": {
+    "project": "TheBlack.Trade",
+    "description": "Example placeholder for Directus schema snapshot bootstrap"
+  },
+  "collections": [
+    { "collection": "tb_users" },
+    { "collection": "tb_orders" },
+    { "collection": "tb_wallets" },
+    { "collection": "tb_documents" }
+  ]
+}

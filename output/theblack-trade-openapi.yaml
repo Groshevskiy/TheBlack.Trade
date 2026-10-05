@@ -1,0 +1,1506 @@
+openapi: 3.1.0
+info:
+  title: TheBlack.Trade API
+  version: 1.0.0
+  summary: API for fiat-to-crypto buy/sell platform for Russian clients
+  description: |
+    Implementation-ready OpenAPI specification for TheBlack.Trade.
+
+    Scope includes:
+    - user authentication and profile management
+    - KYC and compliance workflow
+    - wallet and exchange connection management
+    - quote calculation for buy/sell operations
+    - order lifecycle with manual and optional automatic confirmation
+    - payment intake and payout confirmation workflow
+    - admin moderation and operational actions
+    - email notifications and receipt issuing hooks
+
+    Notes:
+    - Manual confirmation is enabled by default for payment and settlement critical steps.
+    - Automatic confirmation can be enabled per environment or per route through server-side policy.
+    - Monetary fiat amounts are expressed in RUB unless otherwise specified.
+jsonSchemaDialect: https://json-schema.org/draft/2020-12/schema
+servers:
+  - url: https://api.theblack.trade/v1
+    description: Production
+  - url: https://staging-api.theblack.trade/v1
+    description: Staging
+security:
+  - bearerAuth: []
+tags:
+  - name: Auth
+  - name: Users
+  - name: KYC
+  - name: Assets
+  - name: Wallets
+  - name: Quotes
+  - name: Orders
+  - name: Payments
+  - name: Webhooks
+  - name: Receipts
+  - name: Admin
+paths:
+  /auth/register:
+    post:
+      tags: [Auth]
+      summary: Register a new user account
+      security: []
+      operationId: registerUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: User registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Authenticate with email and password
+      security: []
+      operationId: loginUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /auth/refresh:
+    post:
+      tags: [Auth]
+      summary: Refresh access token
+      security: []
+      operationId: refreshToken
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshTokenRequest'
+      responses:
+        '200':
+          description: Refreshed token pair
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: Revoke refresh token
+      operationId: logoutUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshTokenRequest'
+      responses:
+        '204':
+          description: Logged out
+
+  /users/me:
+    get:
+      tags: [Users]
+      summary: Get current user profile
+      operationId: getCurrentUser
+      responses:
+        '200':
+          description: Current user profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+    patch:
+      tags: [Users]
+      summary: Update current user profile
+      operationId: updateCurrentUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserProfileRequest'
+      responses:
+        '200':
+          description: Updated user profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+
+  /kyc/applications:
+    post:
+      tags: [KYC]
+      summary: Create or resubmit KYC application
+      operationId: createKycApplication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateKycApplicationRequest'
+      responses:
+        '201':
+          description: KYC application created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KycApplication'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+    get:
+      tags: [KYC]
+      summary: List current user KYC applications
+      operationId: listMyKycApplications
+      responses:
+        '200':
+          description: KYC applications list
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/KycApplication'
+  /kyc/applications/{applicationId}:
+    get:
+      tags: [KYC]
+      summary: Get KYC application by ID
+      operationId: getKycApplication
+      parameters:
+        - $ref: '#/components/parameters/ApplicationId'
+      responses:
+        '200':
+          description: KYC application
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KycApplication'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /assets:
+    get:
+      tags: [Assets]
+      summary: List supported fiat and crypto assets
+      operationId: listAssets
+      parameters:
+        - name: type
+          in: query
+          schema:
+            $ref: '#/components/schemas/AssetType'
+      responses:
+        '200':
+          description: Assets list
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Asset'
+
+  /wallet-connections:
+    get:
+      tags: [Wallets]
+      summary: List wallet or exchange connections
+      operationId: listWalletConnections
+      responses:
+        '200':
+          description: Wallet connections
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/WalletConnection'
+    post:
+      tags: [Wallets]
+      summary: Create wallet or exchange connection
+      operationId: createWalletConnection
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateWalletConnectionRequest'
+      responses:
+        '201':
+          description: Wallet connection created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WalletConnection'
+  /wallet-connections/{connectionId}:
+    get:
+      tags: [Wallets]
+      summary: Get wallet connection by ID
+      operationId: getWalletConnection
+      parameters:
+        - $ref: '#/components/parameters/ConnectionId'
+      responses:
+        '200':
+          description: Wallet connection
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WalletConnection'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [Wallets]
+      summary: Update wallet connection label or default flag
+      operationId: updateWalletConnection
+      parameters:
+        - $ref: '#/components/parameters/ConnectionId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateWalletConnectionRequest'
+      responses:
+        '200':
+          description: Updated wallet connection
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WalletConnection'
+    delete:
+      tags: [Wallets]
+      summary: Delete wallet connection
+      operationId: deleteWalletConnection
+      parameters:
+        - $ref: '#/components/parameters/ConnectionId'
+      responses:
+        '204':
+          description: Wallet connection deleted
+
+  /quotes:
+    post:
+      tags: [Quotes]
+      summary: Calculate buy or sell quote
+      operationId: createQuote
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateQuoteRequest'
+      responses:
+        '201':
+          description: Quote created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Quote'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /orders:
+    get:
+      tags: [Orders]
+      summary: List current user orders
+      operationId: listOrders
+      parameters:
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/OrderStatus'
+        - name: side
+          in: query
+          schema:
+            $ref: '#/components/schemas/OrderSide'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: Orders list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedOrdersResponse'
+    post:
+      tags: [Orders]
+      summary: Create order from quote
+      operationId: createOrder
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateOrderRequest'
+      responses:
+        '201':
+          description: Order created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /orders/{orderId}:
+    get:
+      tags: [Orders]
+      summary: Get order by ID
+      operationId: getOrder
+      parameters:
+        - $ref: '#/components/parameters/OrderId'
+      responses:
+        '200':
+          description: Order details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /orders/{orderId}/cancel:
+    post:
+      tags: [Orders]
+      summary: Cancel order before irreversible processing stage
+      operationId: cancelOrder
+      parameters:
+        - $ref: '#/components/parameters/OrderId'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+                  maxLength: 500
+      responses:
+        '200':
+          description: Canceled order
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /orders/{orderId}/payment-instructions:
+    get:
+      tags: [Orders]
+      summary: Get payment instructions for buy order
+      operationId: getOrderPaymentInstructions
+      parameters:
+        - $ref: '#/components/parameters/OrderId'
+      responses:
+        '200':
+          description: Payment instructions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentInstructions'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /orders/{orderId}/transfer-instructions:
+    get:
+      tags: [Orders]
+      summary: Get crypto transfer instructions for sell order
+      operationId: getOrderTransferInstructions
+      parameters:
+        - $ref: '#/components/parameters/OrderId'
+      responses:
+        '200':
+          description: Transfer instructions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransferInstructions'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /payments:
+    post:
+      tags: [Payments]
+      summary: Register payment or crypto transfer evidence for manual review
+      operationId: registerPaymentEvidence
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterPaymentEvidenceRequest'
+      responses:
+        '201':
+          description: Evidence registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentRecord'
+  /payments/{paymentId}:
+    get:
+      tags: [Payments]
+      summary: Get payment or transfer record
+      operationId: getPaymentRecord
+      parameters:
+        - $ref: '#/components/parameters/PaymentId'
+      responses:
+        '200':
+          description: Payment record
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentRecord'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /receipts/{orderId}:
+    get:
+      tags: [Receipts]
+      summary: Get receipt metadata for an order
+      operationId: getReceipt
+      parameters:
+        - $ref: '#/components/parameters/OrderId'
+      responses:
+        '200':
+          description: Receipt metadata
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Receipt'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /webhooks/payments/provider:
+    post:
+      tags: [Webhooks]
+      summary: Payment provider callback
+      security: []
+      operationId: paymentProviderWebhook
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PaymentProviderWebhookPayload'
+      responses:
+        '202':
+          description: Webhook accepted
+  /webhooks/exchange/provider:
+    post:
+      tags: [Webhooks]
+      summary: Exchange or custody provider callback
+      security: []
+      operationId: exchangeProviderWebhook
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExchangeProviderWebhookPayload'
+      responses:
+        '202':
+          description: Webhook accepted
+
+  /admin/orders:
+    get:
+      tags: [Admin]
+      summary: List orders for operations dashboard
+      operationId: adminListOrders
+      parameters:
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/OrderStatus'
+        - name: riskLevel
+          in: query
+          schema:
+            $ref: '#/components/schemas/RiskLevel'
+        - name: q
+          in: query
+          schema:
+            type: string
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: Operational orders list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedOrdersResponse'
+  /admin/orders/{orderId}/review:
+    post:
+      tags: [Admin]
+      summary: Approve or reject order review step
+      operationId: adminReviewOrder
+      parameters:
+        - $ref: '#/components/parameters/OrderId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminOrderReviewRequest'
+      responses:
+        '200':
+          description: Reviewed order
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+  /admin/payments/{paymentId}/confirm:
+    post:
+      tags: [Admin]
+      summary: Manually confirm payment or transfer
+      operationId: adminConfirmPayment
+      parameters:
+        - $ref: '#/components/parameters/PaymentId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminPaymentConfirmationRequest'
+      responses:
+        '200':
+          description: Confirmed payment record
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentRecord'
+  /admin/orders/{orderId}/settle:
+    post:
+      tags: [Admin]
+      summary: Trigger settlement or mark as settled
+      operationId: adminSettleOrder
+      parameters:
+        - $ref: '#/components/parameters/OrderId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminSettleOrderRequest'
+      responses:
+        '200':
+          description: Settled order
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    ApplicationId:
+      name: applicationId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    ConnectionId:
+      name: connectionId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    OrderId:
+      name: orderId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    PaymentId:
+      name: paymentId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    Page:
+      name: page
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+    PageSize:
+      name: pageSize
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+  responses:
+    Unauthorized:
+      description: Authentication failed
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Conflict:
+      description: Business conflict
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    ValidationError:
+      description: Validation failed
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ValidationErrorResponse'
+  schemas:
+    Timestamp:
+      type: string
+      format: date-time
+      examples: ['2026-10-03T09:27:00Z']
+    CurrencyCode:
+      type: string
+      enum: [RUB, USDT, BTC, ETH, TON]
+    CryptoCode:
+      type: string
+      enum: [USDT, BTC, ETH, TON]
+    FiatCode:
+      type: string
+      enum: [RUB]
+    BlockchainNetwork:
+      type: string
+      enum: [TRON, ETHEREUM, BITCOIN, TON]
+    OrderSide:
+      type: string
+      enum: [BUY, SELL]
+    OrderStatus:
+      type: string
+      enum:
+        - DRAFT
+        - PENDING_KYC
+        - QUOTED
+        - PENDING_PAYMENT
+        - PAYMENT_SUBMITTED
+        - PAYMENT_UNDER_REVIEW
+        - PAYMENT_CONFIRMED
+        - PENDING_CRYPTO_TRANSFER
+        - CRYPTO_TRANSFER_SUBMITTED
+        - CRYPTO_TRANSFER_UNDER_REVIEW
+        - CRYPTO_TRANSFER_CONFIRMED
+        - PROCESSING_EXCHANGE
+        - SETTLING
+        - COMPLETED
+        - CANCELED
+        - REJECTED
+        - EXPIRED
+    KycStatus:
+      type: string
+      enum: [NOT_STARTED, PENDING, IN_REVIEW, APPROVED, REJECTED, RESUBMISSION_REQUIRED]
+    ConnectionType:
+      type: string
+      enum: [WALLET_ADDRESS, EXCHANGE_ACCOUNT]
+    PaymentStatus:
+      type: string
+      enum: [CREATED, SUBMITTED, UNDER_REVIEW, CONFIRMED, REJECTED, EXPIRED]
+    ReceiptStatus:
+      type: string
+      enum: [PENDING, ISSUED, FAILED]
+    RiskLevel:
+      type: string
+      enum: [LOW, MEDIUM, HIGH, CRITICAL]
+    PaymentMethod:
+      type: string
+      enum: [SBP, BANK_CARD, BANK_TRANSFER]
+    SettlementMethod:
+      type: string
+      enum: [BANK_CARD, BANK_TRANSFER, SBP]
+    AssetType:
+      type: string
+      enum: [FIAT, CRYPTO]
+    Money:
+      type: object
+      additionalProperties: false
+      required: [amount, currency]
+      properties:
+        amount:
+          type: string
+          pattern: '^[0-9]+(\\.[0-9]{1,8})?$'
+          examples: ['150000.00']
+        currency:
+          oneOf:
+            - $ref: '#/components/schemas/CurrencyCode'
+    RegisterRequest:
+      type: object
+      additionalProperties: false
+      required: [email, password, firstName, lastName, acceptedTerms]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
+          maxLength: 128
+        firstName:
+          type: string
+          minLength: 1
+          maxLength: 100
+        lastName:
+          type: string
+          minLength: 1
+          maxLength: 100
+        phone:
+          type: string
+          maxLength: 32
+        acceptedTerms:
+          type: boolean
+          const: true
+    LoginRequest:
+      type: object
+      additionalProperties: false
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
+          maxLength: 128
+    RefreshTokenRequest:
+      type: object
+      additionalProperties: false
+      required: [refreshToken]
+      properties:
+        refreshToken:
+          type: string
+          minLength: 20
+    AuthTokens:
+      type: object
+      additionalProperties: false
+      required: [accessToken, refreshToken, expiresIn]
+      properties:
+        accessToken:
+          type: string
+        refreshToken:
+          type: string
+        expiresIn:
+          type: integer
+          description: Access token lifetime in seconds
+    AuthResponse:
+      type: object
+      additionalProperties: false
+      required: [user, tokens]
+      properties:
+        user:
+          $ref: '#/components/schemas/UserProfile'
+        tokens:
+          $ref: '#/components/schemas/AuthTokens'
+    UserProfile:
+      type: object
+      additionalProperties: false
+      required: [id, email, firstName, lastName, role, kycStatus, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        firstName:
+          type: string
+        lastName:
+          type: string
+        phone:
+          type: string
+          nullable: true
+        role:
+          type: string
+          enum: [USER, OPERATOR, ADMIN]
+        kycStatus:
+          $ref: '#/components/schemas/KycStatus'
+        emailVerifiedAt:
+          allOf:
+            - $ref: '#/components/schemas/Timestamp'
+          nullable: true
+        createdAt:
+          $ref: '#/components/schemas/Timestamp'
+        updatedAt:
+          $ref: '#/components/schemas/Timestamp'
+    UpdateUserProfileRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        firstName:
+          type: string
+          minLength: 1
+          maxLength: 100
+        lastName:
+          type: string
+          minLength: 1
+          maxLength: 100
+        phone:
+          type: string
+          maxLength: 32
+    CreateKycApplicationRequest:
+      type: object
+      additionalProperties: false
+      required: [documentType, documentNumber, issuedCountry, dateOfBirth, residencyCountry, fullAddress, files]
+      properties:
+        documentType:
+          type: string
+          enum: [PASSPORT_RF, INTERNATIONAL_PASSPORT, RESIDENCE_PERMIT]
+        documentNumber:
+          type: string
+          minLength: 3
+          maxLength: 64
+        issuedCountry:
+          type: string
+          minLength: 2
+          maxLength: 2
+        dateOfBirth:
+          type: string
+          format: date
+        residencyCountry:
+          type: string
+          minLength: 2
+          maxLength: 2
+        taxId:
+          type: string
+          nullable: true
+          maxLength: 32
+        fullAddress:
+          type: string
+          minLength: 10
+          maxLength: 500
+        files:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/KycFileInput'
+    KycFileInput:
+      type: object
+      additionalProperties: false
+      required: [fileId, type]
+      properties:
+        fileId:
+          type: string
+          format: uuid
+        type:
+          type: string
+          enum: [DOCUMENT_FRONT, DOCUMENT_BACK, SELFIE, PROOF_OF_ADDRESS]
+    KycApplication:
+      type: object
+      additionalProperties: false
+      required: [id, userId, status, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        status:
+          $ref: '#/components/schemas/KycStatus'
+        rejectionReason:
+          type: string
+          nullable: true
+        createdAt:
+          $ref: '#/components/schemas/Timestamp'
+        updatedAt:
+          $ref: '#/components/schemas/Timestamp'
+    Asset:
+      type: object
+      additionalProperties: false
+      required: [code, type, name, enabled]
+      properties:
+        code:
+          $ref: '#/components/schemas/CurrencyCode'
+        type:
+          $ref: '#/components/schemas/AssetType'
+        name:
+          type: string
+        enabled:
+          type: boolean
+        networks:
+          type: array
+          items:
+            $ref: '#/components/schemas/BlockchainNetwork'
+    CreateWalletConnectionRequest:
+      type: object
+      additionalProperties: false
+      required: [type, providerName, assetCode]
+      properties:
+        type:
+          $ref: '#/components/schemas/ConnectionType'
+        providerName:
+          type: string
+          minLength: 2
+          maxLength: 100
+        assetCode:
+          $ref: '#/components/schemas/CryptoCode'
+        network:
+          $ref: '#/components/schemas/BlockchainNetwork'
+        walletAddress:
+          type: string
+          minLength: 8
+          maxLength: 256
+        exchangeAccountId:
+          type: string
+          minLength: 3
+          maxLength: 128
+        apiKeyReference:
+          type: string
+          nullable: true
+          description: Reference to encrypted secret storage, not raw API key
+        label:
+          type: string
+          maxLength: 100
+        isDefault:
+          type: boolean
+          default: false
+      allOf:
+        - if:
+            properties:
+              type:
+                const: WALLET_ADDRESS
+          then:
+            required: [walletAddress, network]
+        - if:
+            properties:
+              type:
+                const: EXCHANGE_ACCOUNT
+          then:
+            required: [exchangeAccountId]
+    UpdateWalletConnectionRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        label:
+          type: string
+          maxLength: 100
+        isDefault:
+          type: boolean
+    WalletConnection:
+      type: object
+      additionalProperties: false
+      required: [id, userId, type, providerName, assetCode, status, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        type:
+          $ref: '#/components/schemas/ConnectionType'
+        providerName:
+          type: string
+        assetCode:
+          $ref: '#/components/schemas/CryptoCode'
+        network:
+          allOf:
+            - $ref: '#/components/schemas/BlockchainNetwork'
+          nullable: true
+        walletAddressMasked:
+          type: string
+          nullable: true
+        exchangeAccountIdMasked:
+          type: string
+          nullable: true
+        label:
+          type: string
+          nullable: true
+        isDefault:
+          type: boolean
+        status:
+          type: string
+          enum: [PENDING_VERIFICATION, VERIFIED, REJECTED]
+        createdAt:
+          $ref: '#/components/schemas/Timestamp'
+        updatedAt:
+          $ref: '#/components/schemas/Timestamp'
+    CreateQuoteRequest:
+      type: object
+      additionalProperties: false
+      required: [side, fiatCurrency, cryptoCurrency, amountType, amount]
+      properties:
+        side:
+          $ref: '#/components/schemas/OrderSide'
+        fiatCurrency:
+          $ref: '#/components/schemas/FiatCode'
+        cryptoCurrency:
+          $ref: '#/components/schemas/CryptoCode'
+        network:
+          $ref: '#/components/schemas/BlockchainNetwork'
+        amountType:
+          type: string
+          enum: [FIAT, CRYPTO]
+        amount:
+          type: string
+          pattern: '^[0-9]+(\\.[0-9]{1,8})?$'
+        paymentMethod:
+          $ref: '#/components/schemas/PaymentMethod'
+        settlementMethod:
+          $ref: '#/components/schemas/SettlementMethod'
+    Quote:
+      type: object
+      additionalProperties: false
+      required: [id, side, fiatAmount, cryptoAmount, rate, feeAmount, totalAmount, expiresAt, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        side:
+          $ref: '#/components/schemas/OrderSide'
+        fiatAmount:
+          $ref: '#/components/schemas/Money'
+        cryptoAmount:
+          $ref: '#/components/schemas/Money'
+        rate:
+          type: string
+          description: Fiat per one unit of crypto
+        feeAmount:
+          $ref: '#/components/schemas/Money'
+        totalAmount:
+          $ref: '#/components/schemas/Money'
+        slippagePercent:
+          type: string
+          nullable: true
+        expiresAt:
+          $ref: '#/components/schemas/Timestamp'
+        createdAt:
+          $ref: '#/components/schemas/Timestamp'
+    CreateOrderRequest:
+      type: object
+      additionalProperties: false
+      required: [quoteId, walletConnectionId]
+      properties:
+        quoteId:
+          type: string
+          format: uuid
+        walletConnectionId:
+          type: string
+          format: uuid
+        payoutDetails:
+          $ref: '#/components/schemas/PayoutDetailsInput'
+        customerComment:
+          type: string
+          maxLength: 500
+    PayoutDetailsInput:
+      type: object
+      additionalProperties: false
+      properties:
+        settlementMethod:
+          $ref: '#/components/schemas/SettlementMethod'
+        bankName:
+          type: string
+          maxLength: 120
+        cardNumberMasked:
+          type: string
+          maxLength: 32
+        accountNumberMasked:
+          type: string
+          maxLength: 64
+        phoneForSbp:
+          type: string
+          maxLength: 32
+    Order:
+      type: object
+      additionalProperties: false
+      required: [id, userId, quoteId, side, status, fiatAmount, cryptoAmount, createdAt, updatedAt, timeline]
+      properties:
+        id:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        quoteId:
+          type: string
+          format: uuid
+        side:
+          $ref: '#/components/schemas/OrderSide'
+        status:
+          $ref: '#/components/schemas/OrderStatus'
+        riskLevel:
+          $ref: '#/components/schemas/RiskLevel'
+        fiatAmount:
+          $ref: '#/components/schemas/Money'
+        cryptoAmount:
+          $ref: '#/components/schemas/Money'
+        feeAmount:
+          $ref: '#/components/schemas/Money'
+        walletConnectionId:
+          type: string
+          format: uuid
+        payoutDetails:
+          allOf:
+            - $ref: '#/components/schemas/PayoutDetailsInput'
+          nullable: true
+        paymentMethod:
+          allOf:
+            - $ref: '#/components/schemas/PaymentMethod'
+          nullable: true
+        settlementMethod:
+          allOf:
+            - $ref: '#/components/schemas/SettlementMethod'
+          nullable: true
+        customerComment:
+          type: string
+          nullable: true
+        rejectionReason:
+          type: string
+          nullable: true
+        expiresAt:
+          allOf:
+            - $ref: '#/components/schemas/Timestamp'
+          nullable: true
+        completedAt:
+          allOf:
+            - $ref: '#/components/schemas/Timestamp'
+          nullable: true
+        createdAt:
+          $ref: '#/components/schemas/Timestamp'
+        updatedAt:
+          $ref: '#/components/schemas/Timestamp'
+        timeline:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderTimelineEvent'
+    OrderTimelineEvent:
+      type: object
+      additionalProperties: false
+      required: [status, title, createdAt]
+      properties:
+        status:
+          $ref: '#/components/schemas/OrderStatus'
+        title:
+          type: string
+        description:
+          type: string
+          nullable: true
+        createdAt:
+          $ref: '#/components/schemas/Timestamp'
+        actorType:
+          type: string
+          enum: [SYSTEM, USER, OPERATOR, ADMIN]
+    PaymentInstructions:
+      type: object
+      additionalProperties: false
+      required: [orderId, paymentMethod, amount, beneficiary, expiresAt]
+      properties:
+        orderId:
+          type: string
+          format: uuid
+        paymentMethod:
+          $ref: '#/components/schemas/PaymentMethod'
+        amount:
+          $ref: '#/components/schemas/Money'
+        beneficiary:
+          type: object
+          additionalProperties: false
+          required: [name]
+          properties:
+            name:
+              type: string
+            bankName:
+              type: string
+              nullable: true
+            cardNumberMasked:
+              type: string
+              nullable: true
+            accountNumberMasked:
+              type: string
+              nullable: true
+            phoneForSbp:
+              type: string
+              nullable: true
+        reference:
+          type: string
+          nullable: true
+        expiresAt:
+          $ref: '#/components/schemas/Timestamp'
+    TransferInstructions:
+      type: object
+      additionalProperties: false
+      required: [orderId, cryptoCurrency, network, address, amount, expiresAt]
+      properties:
+        orderId:
+          type: string
+          format: uuid
+        cryptoCurrency:
+          $ref: '#/components/schemas/CryptoCode'
+        network:
+          $ref: '#/components/schemas/BlockchainNetwork'
+        address:
+          type: string
+        tagOrMemo:
+          type: string
+          nullable: true
+        amount:
+          $ref: '#/components/schemas/Money'
+        expiresAt:
+          $ref: '#/components/schemas/Timestamp'
+    RegisterPaymentEvidenceRequest:
+      type: object
+      additionalProperties: false
+      required: [orderId, type]
+      properties:
+        orderId:
+          type: string
+          format: uuid
+        type:
+          type: string
+          enum: [FIAT_PAYMENT, CRYPTO_TRANSFER]
+        providerTransactionId:
+          type: string
+          maxLength: 128
+        blockchainTxHash:
+          type: string
+          maxLength: 256
+        amount:
+          $ref: '#/components/schemas/Money'
+        proofFileIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        submittedAt:
+          allOf:
+            - $ref: '#/components/schemas/Timestamp'
+          nullable: true
+      allOf:
+        - if:
+            properties:
+              type:
+                const: FIAT_PAYMENT
+          then:
+            required: [providerTransactionId]
+        - if:
+            properties:
+              type:
+                const: CRYPTO_TRANSFER
+          then:
+            required: [blockchainTxHash]
+    PaymentRecord:
+      type: object
+      additionalProperties: false
+      required: [id, orderId, type, status, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        orderId:
+          type: string
+          format: uuid
+        type:
+          type: string
+          enum: [FIAT_PAYMENT, CRYPTO_TRANSFER]
+        status:
+          $ref: '#/components/schemas/PaymentStatus'
+        amount:
+          allOf:
+            - $ref: '#/components/schemas/Money'
+          nullable: true
+        providerTransactionId:
+          type: string
+          nullable: true
+        blockchainTxHash:
+          type: string
+          nullable: true
+        reviewComment:
+          type: string
+          nullable: true
+        confirmedAt:
+          allOf:
+            - $ref: '#/components/schemas/Timestamp'
+          nullable: true
+        createdAt:
+          $ref: '#/components/schemas/Timestamp'
+        updatedAt:
+          $ref: '#/components/schemas/Timestamp'
+    Receipt:
+      type: object
+      additionalProperties: false
+      required: [orderId, status]
+      properties:
+        orderId:
+          type: string
+          format: uuid
+        status:
+          $ref: '#/components/schemas/ReceiptStatus'
+        provider:
+          type: string
+          nullable: true
+        receiptUrl:
+          type: string
+          format: uri
+          nullable: true
+        fiscalDocumentNumber:
+          type: string
+          nullable: true
+        issuedAt:
+          allOf:
+            - $ref: '#/components/schemas/Timestamp'
+          nullable: true
+    PaymentProviderWebhookPayload:
+      type: object
+      additionalProperties: true
+      required: [event, paymentId, status]
+      properties:
+        event:
+          type: string
+        paymentId:
+          type: string
+        orderId:
+          type: string
+          nullable: true
+        status:
+          type: string
+        payload:
+          type: object
+          additionalProperties: true
+    ExchangeProviderWebhookPayload:
+      type: object
+      additionalProperties: true
+      required: [event, externalReference, status]
+      properties:
+        event:
+          type: string
+        externalReference:
+          type: string
+        orderId:
+          type: string
+          nullable: true
+        status:
+          type: string
+        payload:
+          type: object
+          additionalProperties: true
+    AdminOrderReviewRequest:
+      type: object
+      additionalProperties: false
+      required: [decision]
+      properties:
+        decision:
+          type: string
+          enum: [APPROVE, REJECT]
+        comment:
+          type: string
+          maxLength: 1000
+    AdminPaymentConfirmationRequest:
+      type: object
+      additionalProperties: false
+      required: [decision]
+      properties:
+        decision:
+          type: string
+          enum: [CONFIRM, REJECT]
+        comment:
+          type: string
+          maxLength: 1000
+    AdminSettleOrderRequest:
+      type: object
+      additionalProperties: false
+      required: [mode]
+      properties:
+        mode:
+          type: string
+          enum: [MANUAL, PROVIDER_API]
+        externalSettlementReference:
+          type: string
+          maxLength: 128
+        comment:
+          type: string
+          maxLength: 1000
+    PaginatedOrdersResponse:
+      type: object
+      additionalProperties: false
+      required: [items, page, pageSize, total]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Order'
+        page:
+          type: integer
+        pageSize:
+          type: integer
+        total:
+          type: integer
+    ErrorResponse:
+      type: object
+      additionalProperties: false
+      required: [error]
+      properties:
+        error:
+          type: object
+          additionalProperties: false
+          required: [code, message]
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+            details:
+              type: object
+              additionalProperties: true
+              nullable: true
+    ValidationErrorResponse:
+      allOf:
+        - $ref: '#/components/schemas/ErrorResponse'
+        - type: object
+          properties:
+            error:
+              type: object
+              properties:
+                fields:
+                  type: array
+                  items:
+                    type: object
+                    additionalProperties: false
+                    required: [field, message]
+                    properties:
+                      field:
+                        type: string
+                      message:
+                        type: string

@@ -1,0 +1,87 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+---
+<BaseLayout title="Notifications">
+  <section class="card hero">
+    <div>
+      <p class="eyebrow">Customer cabinet</p>
+      <h2>Notifications summary</h2>
+      <p class="lede">Единый экран для unread/update feed, channel coverage и action-required уведомлений клиента.</p>
+    </div>
+    <button id="refresh" type="button">Refresh</button>
+  </section>
+
+  <div id="notice" class="notice" hidden></div>
+
+  <section class="grid stats">
+    <div class="card stat"><span>Total notifications</span><strong id="totalValue">—</strong></div>
+    <div class="card stat"><span>Unread</span><strong id="unreadValue">—</strong></div>
+    <div class="card stat"><span>Channels</span><strong id="channelsValue">—</strong></div>
+    <div class="card stat"><span>Action required</span><strong id="actionValue">—</strong></div>
+  </section>
+
+  <section class="grid panels">
+    <section class="card panel-wide">
+      <div class="panel-head">
+        <div><p class="eyebrow">Feed</p><h2>Recent notifications</h2></div>
+        <span id="feedLabel" class="tiny">—</span>
+      </div>
+      <div id="notificationsList" class="feed"><p class="empty">Loading notifications…</p></div>
+    </section>
+
+    <section class="card">
+      <div class="panel-head">
+        <div><p class="eyebrow">Coverage</p><h2>Template & channel metrics</h2></div>
+      </div>
+      <div class="feed">
+        <article class="feed-item"><div class="feed-meta"><strong>Read items</strong><span class="badge neutral">state</span></div><p id="readValue">—</p></article>
+        <article class="feed-item"><div class="feed-meta"><strong>Template codes</strong><span class="badge neutral">catalog</span></div><p id="templatesValue">—</p></article>
+      </div>
+    </section>
+  </section>
+
+  <style>
+    .hero,.panel-head,.stat{display:flex;justify-content:space-between;gap:16px;align-items:center}.hero{margin-bottom:16px;flex-wrap:wrap}.hero h2,.panel-head h2{margin:4px 0 0}.eyebrow{margin:0;color:#8b98ab;text-transform:uppercase;letter-spacing:.08em;font-size:12px;font-weight:700}.lede,.tiny{color:#b6c0cf}.tiny{font-size:12px}.hero button{background:#0f1115;color:#f5f7fa;border:1px solid #2a2f3a;border-radius:10px;padding:10px 14px;font:inherit;cursor:pointer}.notice{margin:0 0 16px;padding:12px 14px;border:1px solid #7f1d1d;background:#2b1618;border-radius:10px;color:#fecaca}.stats{margin-bottom:16px}.stat{align-items:flex-start;flex-direction:column}.stat span{color:#8b98ab;font-size:13px}.stat strong{font-size:28px}.panels{align-items:start}.panel-wide{grid-column:span 2}.feed{display:grid;gap:12px}.feed-item{padding:14px;border:1px solid #2a2f3a;border-radius:12px;background:#11151c}.feed-item h3,.feed-item p{margin:0}.feed-item p{color:#b6c0cf;font-size:14px}.feed-meta{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:8px}.badge{display:inline-flex;padding:5px 10px;border-radius:999px;font-size:12px;font-weight:700;border:1px solid currentColor}.badge.good{color:#86efac}.badge.warn{color:#fde68a}.badge.neutral{color:#7dd3fc}.empty{color:#8b98ab}.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}@media(max-width:860px){.panel-wide{grid-column:span 1}.hero button{width:100%}}
+  </style>
+
+  <script>
+    const API = `${window.location.protocol}//${window.location.hostname}:4000/api`;
+    const date = (value) => value ? new Date(value).toLocaleString('ru-RU', { dateStyle: 'short', timeStyle: 'short' }) : '—';
+    const setNotice = (message = '') => {
+      const box = document.getElementById('notice');
+      box.hidden = !message;
+      box.textContent = message;
+    };
+    function renderNotifications(items, metrics) {
+      document.getElementById('totalValue').textContent = String(metrics.total ?? 0);
+      document.getElementById('unreadValue').textContent = String(metrics.unread ?? 0);
+      document.getElementById('channelsValue').textContent = String(metrics.channels ?? 0);
+      document.getElementById('actionValue').textContent = String(metrics.actionRequired ?? 0);
+      document.getElementById('readValue').textContent = String(metrics.read ?? 0);
+      document.getElementById('templatesValue').textContent = String(metrics.templates ?? 0);
+      document.getElementById('feedLabel').textContent = `${items.length} latest items`;
+      document.getElementById('notificationsList').innerHTML = items.length ? items.map((item) => `
+        <article class="feed-item">
+          <div class="feed-meta"><strong>${item.title || item.templateCode || 'Notification'}</strong><span class="badge ${item.readAt ? 'good' : 'warn'}">${item.readAt ? 'read' : 'unread'}</span></div>
+          <p>${item.body || 'No body provided.'}</p>
+          <p class="mono">${item.channel || 'unknown channel'} · ${date(item.createdAt)}</p>
+        </article>
+      `).join('') : '<p class="empty">No notifications yet.</p>';
+    }
+    async function loadSummary() {
+      try {
+        setNotice('');
+        const response = await fetch(`${API}/notifications/summary`);
+        const data = await response.json();
+        if (!response.ok) throw new Error(data?.message || 'Unable to load notifications summary');
+        const item = data.item || {};
+        renderNotifications(item.notifications || [], item.metrics || {});
+      } catch (error) {
+        console.error('notifications summary load failed', error);
+        setNotice(error.message || 'Unknown error');
+      }
+    }
+    document.getElementById('refresh').addEventListener('click', loadSummary);
+    loadSummary();
+  </script>
+</BaseLayout>

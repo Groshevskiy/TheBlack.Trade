@@ -1,0 +1,205 @@
+---
+export const prerender = false;
+import BaseLayout from "../../../layouts/BaseLayout.astro";
+const { id } = Astro.params;
+---
+<BaseLayout title={`Operator Order ${id}`}>
+  <section class="card hero">
+    <div>
+      <p class="eyebrow">Operator order</p>
+      <h2>Order <span class="mono">{id}</span></h2>
+      <p class="lede">Операционный просмотр заказа, документов, уведомлений и управляющих действий.</p>
+    </div>
+    <button id="refresh" type="button">Refresh</button>
+  </section>
+
+  <div id="notice" class="notice" hidden></div>
+
+  <section class="grid layout">
+    <div class="stack">
+      <section class="card">
+        <p class="eyebrow">Summary</p>
+        <h2 id="summary-title">Loading…</h2>
+        <p class="lede" id="summary-subtitle">Fetching order data.</p>
+        <div class="facts">
+          <div><span>Public ID</span><strong id="publicId">—</strong></div>
+          <div><span>Status</span><strong id="status">—</strong></div>
+          <div><span>Direction</span><strong id="direction">—</strong></div>
+          <div><span>Fiat</span><strong id="fiat">—</strong></div>
+          <div><span>Crypto</span><strong id="crypto">—</strong></div>
+          <div><span>Rate</span><strong id="rate">—</strong></div>
+          <div><span>Wallet</span><strong id="wallet" class="mono">—</strong></div>
+          <div><span>Payout requisite</span><strong id="payout" class="mono">—</strong></div>
+          <div><span>Updated</span><strong id="updated">—</strong></div>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="section-head">
+          <div><p class="eyebrow">Lifecycle</p><h2>Timeline</h2></div>
+          <span id="timeline-count" class="tiny">0 events</span>
+        </div>
+        <div id="timeline" class="feed"><p class="empty">Loading timeline…</p></div>
+      </section>
+
+      <section class="card">
+        <div class="section-head">
+          <div><p class="eyebrow">Outbound</p><h2>Notifications</h2></div>
+          <span id="notifications-count" class="tiny">0 items</span>
+        </div>
+        <div id="notifications" class="feed"><p class="empty">Loading notifications…</p></div>
+      </section>
+    </div>
+
+    <div class="stack">
+      <section class="card">
+        <div class="section-head">
+          <div><p class="eyebrow">Actions</p><h2>Operator controls</h2></div>
+        </div>
+        <div id="actions" class="action-list"><p class="empty">Loading actions…</p></div>
+      </section>
+
+      <section class="card">
+        <div class="section-head">
+          <div><p class="eyebrow">Compliance</p><h2>Documents</h2></div>
+          <span id="documents-count" class="tiny">0 docs</span>
+        </div>
+        <div id="documents" class="feed"><p class="empty">Loading documents…</p></div>
+      </section>
+    </div>
+  </section>
+
+  <style>
+    .hero,.section-head,.facts,.action-row,.hero button{display:flex}.hero,.section-head{justify-content:space-between;align-items:center;gap:16px}.hero{margin-bottom:16px;flex-wrap:wrap}.hero h2{margin:4px 0 0}.eyebrow{margin:0;color:#8b98ab;text-transform:uppercase;letter-spacing:.08em;font-size:12px;font-weight:700}.lede,.tiny{color:#b6c0cf}.tiny{font-size:12px}.notice{margin:0 0 16px;padding:12px 14px;border:1px solid #7f1d1d;background:#2b1618;border-radius:10px;color:#fecaca}.layout{align-items:start}.stack{display:grid;gap:16px}.facts{flex-wrap:wrap;gap:12px;margin-top:20px}.facts>div{min-width:180px;flex:1 1 180px;background:#0f1115;border:1px solid #2a2f3a;border-radius:12px;padding:14px}.facts span{display:block;color:#8b98ab;font-size:12px;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px}.facts strong{display:block;font-size:16px}.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}.feed{display:grid;gap:12px}.feed-item{padding:14px;border:1px solid #2a2f3a;border-radius:12px;background:#11151c}.feed-item h3,.feed-item p{margin:0}.feed-item p{color:#b6c0cf;font-size:14px}.feed-meta{display:flex;justify-content:space-between;gap:12px;margin-bottom:8px;flex-wrap:wrap}.status{display:inline-flex;padding:5px 10px;border-radius:999px;font-size:12px;font-weight:700;border:1px solid currentColor}.status.completed,.status.approved{color:#86efac}.status.processing,.status.pending{color:#fde68a}.status.awaiting_payment,.status.payment_confirmed{color:#7dd3fc}.status.cancelled,.status.expired,.status.rejected{color:#fca5a5}.status.draft{color:#d8b4fe}.action-list{display:grid;gap:10px}.action-row{justify-content:space-between;align-items:center;gap:12px;padding:12px;border:1px solid #2a2f3a;border-radius:12px;background:#11151c}.action-row button,.hero button,.doc-actions button{background:#0f1115;color:#f5f7fa;border:1px solid #2a2f3a;border-radius:10px;padding:10px 14px;font:inherit;cursor:pointer}.doc-actions{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}.doc-actions button.approve{border-color:#14532d;color:#86efac}.doc-actions button.reject{border-color:#7f1d1d;color:#fca5a5}.empty{color:#8b98ab}.link-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}.link-row a{display:inline-flex;padding:8px 10px;border:1px solid #2a2f3a;border-radius:8px;color:#f5f7fa;text-decoration:none}@media(max-width:860px){.layout{grid-template-columns:1fr}.hero button{width:100%}}
+  </style>
+
+  <script define:vars={{ id }}>
+    const API = `${window.location.protocol}//${window.location.hostname}:4000/api`;
+    const orderId = id;
+    const $ = (s) => document.querySelector(s);
+    const fmt = (v) => Number(v ?? 0).toLocaleString('en-US');
+    const date = (v) => v ? new Date(v).toLocaleString('ru-RU', { dateStyle: 'short', timeStyle: 'short' }) : '—';
+    const cut = (v) => v ? `${String(v).slice(0, 8)}…` : '—';
+
+    function notify(message = '') {
+      const box = $('#notice');
+      if (!message) { box.hidden = true; box.textContent = ''; return; }
+      box.hidden = false; box.textContent = message;
+    }
+
+    async function fetchJson(url, options) {
+      const response = await fetch(url, options);
+      const data = await response.json();
+      if (!response.ok) throw new Error(data?.message || 'Request failed');
+      return data;
+    }
+
+    function renderSummary(order) {
+      $('#summary-title').textContent = `${fmt(order.fiatAmount)} fiat → ${fmt(order.cryptoAmount)} crypto`;
+      $('#summary-subtitle').textContent = `Quote ${cut(order.quoteId)} · User ${cut(order.userId)}`;
+      $('#publicId').textContent = order.publicId;
+      $('#status').textContent = order.statusCode;
+      $('#direction').textContent = order.directionCode;
+      $('#fiat').textContent = fmt(order.fiatAmount);
+      $('#crypto').textContent = fmt(order.cryptoAmount);
+      $('#rate').textContent = order.rate;
+      $('#wallet').textContent = cut(order.walletId);
+      $('#payout').textContent = cut(order.payoutRequisiteId);
+      $('#updated').textContent = date(order.updatedAt);
+    }
+
+    function renderTimeline(items) {
+      $('#timeline-count').textContent = `${items.length} events`;
+      $('#timeline').innerHTML = items.length ? items.map((item) => `
+        <article class="feed-item">
+          <div class="feed-meta"><strong>${item.eventType}</strong><span>${date(item.createdAt)}</span></div>
+          <p>${item.fromStatus || '—'} → ${item.toStatus || '—'}</p>
+          <p>${item.actorType || 'system'}${item.actorId ? ` · ${item.actorId}` : ''}</p>
+        </article>`).join('') : '<p class="empty">No events yet.</p>';
+    }
+
+    function renderNotifications(items) {
+      $('#notifications-count').textContent = `${items.length} items`;
+      $('#notifications').innerHTML = items.length ? items.map((item) => `
+        <article class="feed-item">
+          <div class="feed-meta"><strong>${item.title}</strong><span>${date(item.createdAt)}</span></div>
+          <p>${item.body}</p>
+          <p>${item.channel}</p>
+        </article>`).join('') : '<p class="empty">No notifications yet.</p>';
+    }
+
+    function renderActions(items) {
+      $('#actions').innerHTML = items.length ? items.map((item) => `
+        <div class="action-row">
+          <div>
+            <strong>${item.code}</strong>
+            <p>${item.label || item.code}</p>
+          </div>
+          <button type="button" data-action="${item.code}">Run</button>
+        </div>`).join('') : '<p class="empty">No actions available.</p>';
+
+      document.querySelectorAll('[data-action]').forEach((button) => {
+        button.addEventListener('click', async () => {
+          try {
+            await fetchJson(`${API}/orders/${orderId}/actions`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ action_code: button.dataset.action, actor_type: 'operator', actor_id: 'demo-operator' }),
+            });
+            await load();
+          } catch (error) {
+            notify(error.message || 'Unable to execute action');
+          }
+        });
+      });
+    }
+
+    function renderDocuments(items) {
+      $('#documents-count').textContent = `${items.length} docs`;
+      $('#documents').innerHTML = items.length ? items.map((item) => `
+        <article class="feed-item">
+          <div class="feed-meta"><strong>${item.documentType}</strong><span class="status ${item.status}">${item.status}</span></div>
+          <p class="mono">${item.id}</p>
+          <p>Created: ${date(item.createdAt)}</p>
+          <div class="doc-actions">
+            <button type="button" class="approve" data-doc="${item.id}" data-status="approved">Approve</button>
+            <button type="button" class="reject" data-doc="${item.id}" data-status="rejected">Reject</button>
+          </div>
+        </article>`).join('') : '<p class="empty">No documents uploaded.</p>';
+
+      document.querySelectorAll('[data-doc]').forEach((button) => {
+        button.addEventListener('click', async () => {
+          try {
+            await fetchJson(`${API}/documents/${button.dataset.doc}/status`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ status: button.dataset.status, operator_id: 'demo-operator' }),
+            });
+            await load();
+          } catch (error) {
+            notify(error.message || 'Unable to update document');
+          }
+        });
+      });
+    }
+
+    async function load() {
+      try {
+        notify('');
+        const data = await fetchJson(`${API}/orders/${orderId}/operator-summary`);
+        const item = data.item || {};
+        renderSummary(item.order);
+        renderTimeline(item.timeline || []);
+        renderNotifications(item.notifications || []);
+        renderActions(item.actions || []);
+        renderDocuments(item.documents || []);
+      } catch (error) {
+        console.error('operator order detail failed', error);
+        notify(error.message || 'Unable to load operator detail');
+      }
+    }
+
+    document.getElementById('refresh').addEventListener('click', load);
+    load();
+  </script>
+</BaseLayout>

@@ -1,0 +1,14 @@
+[
+  {
+    "role": "client",
+    "collection": "tb_orders",
+    "action": "read",
+    "access": "owner_only"
+  },
+  {
+    "role": "operator",
+    "collection": "tb_orders",
+    "action": "read",
+    "access": "all"
+  }
+]
