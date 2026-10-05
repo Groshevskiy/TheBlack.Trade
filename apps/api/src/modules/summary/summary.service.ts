@@ -45,9 +45,10 @@ export class SummaryService {
 
   async getAccountSummary() {
     const user = await this.getDemoUser();
-    const [orders, notifications, wallets, payoutRequisites] = await Promise.all([
+    const [orders, notifications, unreadNotifications, wallets, payoutRequisites] = await Promise.all([
       db.select().from(tbOrders).where(eq(tbOrders.userId, user.id)).orderBy(desc(tbOrders.createdAt)).limit(10),
-      db.select().from(tbNotifications).where(and(eq(tbNotifications.userId, user.id), isNull(tbNotifications.readAt))).orderBy(desc(tbNotifications.createdAt)).limit(10),
+      db.select().from(tbNotifications).where(eq(tbNotifications.userId, user.id)).orderBy(desc(tbNotifications.createdAt)).limit(10),
+      db.select().from(tbNotifications).where(and(eq(tbNotifications.userId, user.id), isNull(tbNotifications.readAt))).limit(50),
       db.select().from(tbWallets).where(eq(tbWallets.userId, user.id)).orderBy(desc(tbWallets.createdAt)).limit(10),
       db.select().from(tbPayoutRequisites).where(eq(tbPayoutRequisites.userId, user.id)).orderBy(desc(tbPayoutRequisites.createdAt)).limit(10),
     ]);
@@ -56,7 +57,7 @@ export class SummaryService {
       user: this.toUserSummary(user),
       metrics: {
         orders: orders.length,
-        unreadNotifications: notifications.length,
+        unreadNotifications: unreadNotifications.length,
         wallets: wallets.length,
         payoutRequisites: payoutRequisites.length,
       },

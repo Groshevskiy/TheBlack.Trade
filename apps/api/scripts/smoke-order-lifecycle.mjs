@@ -3,8 +3,6 @@ const readinessTimeoutMs = Number(process.env.API_READY_TIMEOUT_MS ?? 20000);
 const readinessIntervalMs = Number(process.env.API_READY_INTERVAL_MS ?? 1000);
 const fixture = {
   userId: '00000000-0000-0000-0000-000000000401',
-  walletId: '00000000-0000-0000-0000-000000000501',
-  payoutId: '00000000-0000-0000-0000-000000000601',
 };
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -72,8 +70,6 @@ async function main() {
     body: JSON.stringify({
       quote_id: quote.quote_id,
       user_id: fixture.userId,
-      payout_requisite_id: fixture.payoutId,
-      wallet_id: fixture.walletId,
     }),
   });
   assert(createdOrder?.id && createdOrder?.publicId, 'created order identity is required');
@@ -160,7 +156,7 @@ async function main() {
   const timeline = await api(`/orders/${createdOrder.publicId}/timeline`);
   assert(Array.isArray(timeline?.items), 'timeline.items must be an array');
   assert(hasTransition(timeline.items, null, 'draft', 'order_created'), 'timeline must contain order_created');
-  assert(hasTransition(timeline.items, 'draft', 'awaiting_payment', 'status_updated'), 'timeline must contain status_updated to awaiting_payment');
+  assert(hasTransition(timeline.items, 'draft', 'awaiting_payment', 'status_changed'), 'timeline must contain status_changed to awaiting_payment');
   assert(hasTransition(timeline.items, 'awaiting_payment', 'payment_confirmed', 'action_confirm_payment'), 'timeline must contain confirm_payment transition');
   assert(hasTransition(timeline.items, 'payment_confirmed', 'processing', 'action_start_processing'), 'timeline must contain start_processing transition');
   assert(hasTransition(timeline.items, 'processing', 'completed', 'action_complete'), 'timeline must contain complete transition');
@@ -174,9 +170,9 @@ async function main() {
   const documents = await api(`/documents?order_id=${createdOrder.id}`);
   assert(Array.isArray(documents?.items) && documents.items.some((item) => item.id === createdDocument.item.id), 'documents list must include created document');
 
-  const auditLogs = await api('/audit-logs?entity_type=order');
+  const auditLogs = await api(`/audit-logs?entity_type=order&entity_id=${createdOrder.id}`);
   assert(Array.isArray(auditLogs?.items), 'auditLogs.items must be an array');
-  const orderAuditLogs = auditLogs.items.filter((item) => item?.entityId === createdOrder.id);
+  const orderAuditLogs = auditLogs.items;
   assert(orderAuditLogs.some((item) => item?.action === 'order.status_changed'), 'audit logs must include status change');
   assert(orderAuditLogs.some((item) => item?.action === 'order.action.confirm_payment'), 'audit logs must include confirm_payment action');
   assert(orderAuditLogs.some((item) => item?.action === 'order.action.start_processing'), 'audit logs must include start_processing action');
