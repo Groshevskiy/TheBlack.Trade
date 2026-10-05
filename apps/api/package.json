@@ -5,7 +5,7 @@
   "version": "0.1.0",
   "scripts": {
     "dev": "nest start --watch",
-    "build": "nest build",
+    "build": "node --no-warnings=ExperimentalWarning ./node_modules/typescript/bin/tsc -p tsconfig.json",
     "start": "node dist/main.js",
     "lint": "eslint .",
     "test": "vitest",
