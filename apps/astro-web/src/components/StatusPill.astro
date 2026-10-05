@@ -1,0 +1,14 @@
+---
+export interface Props {
+  text: string;
+  tone?: 'completed' | 'processing' | 'awaiting_payment' | 'payment_confirmed' | 'cancelled' | 'expired' | 'draft' | 'read' | 'unread' | 'good' | 'warn' | 'neutral';
+  className?: string;
+}
+
+const { text, tone = 'neutral', className = '' } = Astro.props;
+---
+<span class={`status-pill ${tone} ${className}`.trim()}>{text}</span>
+
+<style>
+  .status-pill{display:inline-flex;align-items:center;padding:5px 10px;border-radius:999px;font-size:12px;font-weight:700;border:1px solid currentColor}.status-pill.completed,.status-pill.read,.status-pill.good{color:#86efac}.status-pill.processing,.status-pill.warn{color:#fde68a}.status-pill.awaiting_payment,.status-pill.payment_confirmed,.status-pill.unread,.status-pill.neutral{color:#7dd3fc}.status-pill.cancelled,.status-pill.expired{color:#fca5a5}.status-pill.draft{color:#d8b4fe}
+</style>

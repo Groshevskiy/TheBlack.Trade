@@ -1,0 +1,19 @@
+---
+export interface Props {
+  label: string;
+  valueId: string;
+  description: string;
+  accent?: boolean;
+}
+
+const { label, valueId, description, accent = false } = Astro.props;
+---
+<article class={`card metric-card ${accent ? 'accent' : ''}`}>
+  <span>{label}</span>
+  <strong id={valueId}>—</strong>
+  <p>{description}</p>
+</article>
+
+<style>
+  .metric-card{display:grid;gap:8px}.metric-card span{color:var(--faint,#8b98ab);font-size:13px}.metric-card strong{font-size:30px}.metric-card p{color:var(--muted,#b6c0cf);margin:0}.metric-card.accent{background:linear-gradient(180deg,#171a21 0%,#131e24 100%)}
+</style>

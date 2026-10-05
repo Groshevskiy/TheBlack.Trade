@@ -2,7 +2,7 @@ import { tt as __exportAll } from "./errors_Co3p8A61.mjs";
 import { d as maybeRenderHead, i as renderComponent, u as renderTemplate } from "./server_4uPAlPSy.mjs";
 import { t as createComponent } from "./compiler_DNiS3Csg.mjs";
 import { t as renderScript } from "./script_DxgdGfpY.mjs";
-import { t as $$BaseLayout } from "./BaseLayout_BpIUrvSy.mjs";
+import { t as $$BaseLayout } from "./BaseLayout__drHlUMR.mjs";
 //#region src/pages/operator/orders/index.astro
 var orders_exports = /* @__PURE__ */ __exportAll({
 	default: () => $$Index,

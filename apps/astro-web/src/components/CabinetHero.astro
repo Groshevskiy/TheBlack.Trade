@@ -1,0 +1,37 @@
+---
+export interface Props {
+  eyebrow?: string;
+  title: string;
+  lede?: string;
+  actionHref?: string;
+  actionLabel?: string;
+  buttonId?: string;
+  buttonLabel?: string;
+}
+
+const {
+  eyebrow = 'Customer cabinet',
+  title,
+  lede = '',
+  actionHref,
+  actionLabel,
+  buttonId = 'refresh',
+  buttonLabel = 'Refresh',
+} = Astro.props;
+---
+<section class="card hero-block">
+  <div>
+    <p class="eyebrow">{eyebrow}</p>
+    <h2>{title}</h2>
+    {lede && <p class="lede">{lede}</p>}
+  </div>
+  <div class="hero-actions">
+    {actionHref && actionLabel && <a class="primary-link" href={actionHref}>{actionLabel}</a>}
+    <button id={buttonId} type="button">{buttonLabel}</button>
+  </div>
+</section>
+
+<style>
+  .hero-block,.hero-actions{display:flex;justify-content:space-between;gap:16px;align-items:center}
+  .hero-block{margin-bottom:16px;flex-wrap:wrap}.hero-block h2{margin:4px 0 0}.eyebrow{margin:0;color:var(--faint,#8b98ab);text-transform:uppercase;letter-spacing:.08em;font-size:12px;font-weight:700}.lede{color:var(--muted,#b6c0cf)}.hero-actions{margin-left:auto;flex-wrap:wrap}.hero-actions button,.primary-link{background:#0f1115;color:#f5f7fa;border:1px solid #2a2f3a;border-radius:10px;padding:10px 14px;font:inherit}.primary-link{background:var(--accent,#7dd3fc);border-color:var(--accent,#7dd3fc);color:var(--accent-ink,#07111a);font-weight:700;display:inline-flex;align-items:center}@media(max-width:760px){.hero-block,.hero-actions{align-items:flex-start;flex-direction:column}}
+</style>

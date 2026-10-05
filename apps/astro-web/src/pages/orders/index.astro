@@ -6,131 +6,343 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
     <div>
       <p class="eyebrow">Customer cabinet</p>
       <h2>Your orders</h2>
-      <p class="lede">Список заявок клиента со статусами, суммами и быстрым переходом в карточку заказа.</p>
+      <p class="lede">Полный список заявок клиента с фильтрами, метриками, quick insight по следующему действию и переходом в detail flow.</p>
     </div>
     <div class="hero-actions">
+      <a class="primary-link" href="/">Create order</a>
       <button id="refresh" type="button">Refresh</button>
-      <select id="statusFilter" aria-label="Filter customer orders by status">
-        <option value="all">All statuses</option>
-        <option value="draft">draft</option>
-        <option value="awaiting_payment">awaiting_payment</option>
-        <option value="payment_confirmed">payment_confirmed</option>
-        <option value="processing">processing</option>
-        <option value="completed">completed</option>
-        <option value="cancelled">cancelled</option>
-        <option value="expired">expired</option>
-      </select>
     </div>
   </section>
 
-  <section class="grid stats">
-    <div class="card stat"><span>Total</span><strong id="stat-total">—</strong></div>
-    <div class="card stat"><span>Open</span><strong id="stat-open">—</strong></div>
-    <div class="card stat"><span>Completed</span><strong id="stat-completed">—</strong></div>
-    <div class="card stat"><span>Needs action</span><strong id="stat-action">—</strong></div>
+  <div id="notice" class="notice" hidden></div>
+
+  <section class="metrics-grid">
+    <article class="card metric-card">
+      <span>Total orders</span>
+      <strong id="stat-total">—</strong>
+      <p>All customer requests visible in the cabinet.</p>
+    </article>
+    <article class="card metric-card accent">
+      <span>Needs action</span>
+      <strong id="stat-action">—</strong>
+      <p>Orders that most likely require customer attention next.</p>
+    </article>
+    <article class="card metric-card">
+      <span>In progress</span>
+      <strong id="stat-open">—</strong>
+      <p>Draft, awaiting payment, confirmed or processing orders.</p>
+    </article>
+    <article class="card metric-card">
+      <span>Completed</span>
+      <strong id="stat-completed">—</strong>
+      <p>Closed lifecycle requests ready for archive-style review.</p>
+    </article>
   </section>
 
-  <section class="card table-card">
-    <div class="table-head">
-      <div>
-        <p class="eyebrow">Orders</p>
-        <h2>Recent requests</h2>
-      </div>
-      <p id="summary" class="summary">Loading…</p>
+  <section class="layout">
+    <div class="stack">
+      <section class="card filters-card">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Filters</p>
+            <h3>Find the right order</h3>
+          </div>
+          <p id="summary" class="tiny">Loading orders…</p>
+        </div>
+
+        <div class="filters-grid">
+          <label>
+            <span>Status</span>
+            <select id="statusFilter">
+              <option value="all">All statuses</option>
+              <option value="draft">draft</option>
+              <option value="awaiting_payment">awaiting_payment</option>
+              <option value="payment_confirmed">payment_confirmed</option>
+              <option value="processing">processing</option>
+              <option value="completed">completed</option>
+              <option value="cancelled">cancelled</option>
+              <option value="expired">expired</option>
+            </select>
+          </label>
+
+          <label>
+            <span>Search</span>
+            <input id="searchFilter" type="search" placeholder="Public ID, asset, network" />
+          </label>
+
+          <label>
+            <span>Sort</span>
+            <select id="sortFilter">
+              <option value="updated_desc">Recently updated</option>
+              <option value="updated_asc">Oldest updated</option>
+              <option value="fiat_desc">Largest fiat amount</option>
+              <option value="fiat_asc">Smallest fiat amount</option>
+            </select>
+          </label>
+        </div>
+      </section>
+
+      <section class="card list-card">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Orders feed</p>
+            <h3>Customer lifecycle list</h3>
+          </div>
+          <span id="visibleCount" class="tiny">0 shown</span>
+        </div>
+
+        <div id="ordersList" class="orders-list">
+          <p class="empty">Loading orders…</p>
+        </div>
+      </section>
     </div>
-    <div id="notice" class="notice" hidden></div>
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>Public ID</th>
-            <th>Status</th>
-            <th>Direction</th>
-            <th>Fiat</th>
-            <th>Crypto</th>
-            <th>Updated</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody id="ordersBody">
-          <tr><td colspan="7" class="empty">Loading orders…</td></tr>
-        </tbody>
-      </table>
-    </div>
+
+    <aside class="stack">
+      <section class="card insight-card">
+        <p class="eyebrow">Next step</p>
+        <h3 id="insightTitle">Preparing insight…</h3>
+        <p class="lede" id="insightCopy">The sidebar will explain the most important action based on visible orders.</p>
+      </section>
+
+      <section class="card">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Priority queue</p>
+            <h3>Needs attention first</h3>
+          </div>
+        </div>
+        <div id="priorityList" class="priority-list">
+          <p class="empty">Loading queue…</p>
+        </div>
+      </section>
+    </aside>
   </section>
 
   <style>
-    .hero,.table-head,.hero-actions,.stat{display:flex;justify-content:space-between;gap:16px;align-items:center}
-    .hero{margin-bottom:16px;flex-wrap:wrap}.hero h2,.table-head h2{margin:4px 0 0}.eyebrow{margin:0;color:#8b98ab;text-transform:uppercase;letter-spacing:.08em;font-size:12px;font-weight:700}.lede,.summary{color:#b6c0cf}.hero-actions{margin-left:auto}.hero-actions button,.hero-actions select{background:#0f1115;color:#f5f7fa;border:1px solid #2a2f3a;border-radius:10px;padding:10px 14px;font:inherit}.stats{margin-bottom:16px}.stat{align-items:flex-start;flex-direction:column}.stat span{color:#8b98ab;font-size:13px}.stat strong{font-size:28px}.table-card table{width:100%;border-collapse:collapse}.table-card th,.table-card td{text-align:left;padding:14px 10px;border-bottom:1px solid #2a2f3a}.table-card th{color:#8b98ab;font-size:12px;text-transform:uppercase;letter-spacing:.08em}.status{display:inline-flex;padding:5px 10px;border-radius:999px;font-size:12px;font-weight:700;border:1px solid currentColor}.status.completed{color:#86efac}.status.processing{color:#fde68a}.status.awaiting_payment,.status.payment_confirmed{color:#7dd3fc}.status.cancelled,.status.expired{color:#fca5a5}.status.draft{color:#d8b4fe}.table-wrap{overflow:auto}.table-card a.action-link{display:inline-flex;padding:8px 10px;border:1px solid #2a2f3a;border-radius:8px;color:#f5f7fa}.empty{text-align:center;color:#8b98ab}.notice{margin:0 0 16px;padding:12px 14px;border:1px solid #7f1d1d;background:#2b1618;border-radius:10px;color:#fecaca}.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}@media(max-width:720px){.table-card th:nth-child(3),.table-card td:nth-child(3),.table-card th:nth-child(5),.table-card td:nth-child(5){display:none}.hero-actions{width:100%}.hero-actions>*{flex:1}}
+    .hero,.hero-actions,.section-head,.order-head,.order-meta,.priority-item{display:flex;justify-content:space-between;gap:16px;align-items:center}
+    .hero{margin-bottom:16px;flex-wrap:wrap}.hero h2,.section-head h3,.insight-card h3{margin:4px 0 0}.eyebrow{margin:0;color:#8b98ab;text-transform:uppercase;letter-spacing:.08em;font-size:12px;font-weight:700}.lede,.tiny,.metric-card p,.order-copy p,.priority-copy p{color:#b6c0cf}.hero-actions{margin-left:auto;flex-wrap:wrap}.hero-actions button,.primary-link,.filters-grid input,.filters-grid select{background:#0f1115;color:#f5f7fa;border:1px solid #2a2f3a;border-radius:10px;padding:10px 14px;font:inherit}.primary-link{background:#7dd3fc;border-color:#7dd3fc;color:#07111a;font-weight:700;display:inline-flex;align-items:center}.metrics-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin-bottom:16px}.metric-card{display:grid;gap:8px}.metric-card span{color:#8b98ab;font-size:13px}.metric-card strong{font-size:30px}.metric-card.accent{background:linear-gradient(180deg,#171a21 0%,#131e24 100%)}.layout{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(280px,.9fr);gap:16px}.stack{display:grid;gap:16px}.filters-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}.filters-grid label{display:grid;gap:8px}.filters-grid span{color:#8b98ab;font-size:13px}.orders-list,.priority-list{display:grid;gap:12px}.order-card,.priority-item{padding:16px;border:1px solid #2a2f3a;border-radius:14px;background:#0f1115}.order-card{display:grid;gap:14px}.order-copy{display:grid;gap:6px}.order-copy h4,.priority-copy strong{margin:0}.order-meta{flex-wrap:wrap}.meta-line{display:flex;gap:12px;flex-wrap:wrap;color:#8b98ab;font-size:14px}.status{display:inline-flex;padding:5px 10px;border-radius:999px;font-size:12px;font-weight:700;border:1px solid currentColor;text-transform:capitalize}.status.completed{color:#86efac}.status.processing{color:#fde68a}.status.awaiting_payment,.status.payment_confirmed{color:#7dd3fc}.status.cancelled,.status.expired{color:#fca5a5}.status.draft{color:#d8b4fe}.cta-row{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}.cta-row a{display:inline-flex;padding:9px 12px;border:1px solid #2a2f3a;border-radius:10px;color:#f5f7fa}.amounts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.amounts div{padding:12px;border-radius:10px;background:#151922;border:1px solid #222937}.amounts span{display:block;color:#8b98ab;font-size:12px}.amounts strong{display:block;margin-top:4px}.priority-item{align-items:flex-start}.priority-copy{display:grid;gap:4px}.empty{color:#8b98ab}.notice{margin:0 0 16px;padding:12px 14px;border:1px solid #7f1d1d;background:#2b1618;border-radius:10px;color:#fecaca}.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}@media(max-width:1080px){.metrics-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.layout{grid-template-columns:1fr}}@media(max-width:720px){.metrics-grid,.filters-grid,.amounts{grid-template-columns:1fr}.hero,.hero-actions,.section-head,.order-head,.order-meta,.priority-item,.cta-row{align-items:flex-start;flex-direction:column}}
   </style>
 
   <script>
     const API = `${window.location.protocol}//${window.location.hostname}:4000/api`;
-    const body = document.getElementById('ordersBody');
-    const filter = document.getElementById('statusFilter');
-    const notice = document.getElementById('notice');
-    const summary = document.getElementById('summary');
+    const listEl = document.getElementById('ordersList');
+    const priorityEl = document.getElementById('priorityList');
+    const filterStatusEl = document.getElementById('statusFilter');
+    const filterSearchEl = document.getElementById('searchFilter');
+    const filterSortEl = document.getElementById('sortFilter');
+    const summaryEl = document.getElementById('summary');
+    const visibleCountEl = document.getElementById('visibleCount');
+    const noticeEl = document.getElementById('notice');
+    const insightTitleEl = document.getElementById('insightTitle');
+    const insightCopyEl = document.getElementById('insightCopy');
+    const refreshBtn = document.getElementById('refresh');
 
-    const fmt = (value) => Number(value ?? 0).toLocaleString('en-US');
+    let orders = [];
+
+    const fmt = (value, digits = 2) => Number(value ?? 0).toLocaleString('en-US', { maximumFractionDigits: digits });
     const date = (value) => value ? new Date(value).toLocaleString('ru-RU', { dateStyle: 'short', timeStyle: 'short' }) : '—';
 
     function setNotice(message = '') {
       if (!message) {
-        notice.hidden = true;
-        notice.textContent = '';
+        noticeEl.hidden = true;
+        noticeEl.textContent = '';
         return;
       }
-      notice.hidden = false;
-      notice.textContent = message;
+      noticeEl.hidden = false;
+      noticeEl.textContent = message;
     }
 
-    function updateStats(metrics = {}) {
-      document.getElementById('stat-total').textContent = String(metrics.total ?? 0);
-      document.getElementById('stat-open').textContent = String(metrics.open ?? 0);
-      document.getElementById('stat-completed').textContent = String(metrics.completed ?? 0);
-      document.getElementById('stat-action').textContent = String(metrics.needsAction ?? 0);
+    function normalizeStatus(order) {
+      return order.statusCode || order.status_code || 'draft';
     }
 
-    function renderRows(items) {
-      const selected = filter.value;
-      const filtered = selected === 'all' ? items : items.filter((item) => item.statusCode === selected);
-      summary.textContent = `${filtered.length} visible / ${items.length} total`;
-      if (!filtered.length) {
-        body.innerHTML = '<tr><td colspan="7" class="empty">No orders match this filter.</td></tr>';
+    function orderTitle(order) {
+      return order.publicId || order.public_id || '—';
+    }
+
+    function statusInsight(items) {
+      if (items.some((item) => normalizeStatus(item) === 'awaiting_payment')) {
+        return {
+          title: 'Customer payment is the top priority',
+          copy: 'At least one visible order is waiting for fiat payment. Open it first and guide the customer to upload proof or finish the transfer.',
+        };
+      }
+      if (items.some((item) => normalizeStatus(item) === 'payment_confirmed' || normalizeStatus(item) === 'processing')) {
+        return {
+          title: 'Processing is underway',
+          copy: 'Use the detail flow to monitor execution and recent notifications for active orders already moving through operations.',
+        };
+      }
+      if (items.some((item) => normalizeStatus(item) === 'draft')) {
+        return {
+          title: 'Fresh drafts are available',
+          copy: 'Draft orders were recently created. Review quote details and move into the next payment step from the detail page.',
+        };
+      }
+      if (items.some((item) => normalizeStatus(item) === 'completed')) {
+        return {
+          title: 'Completed orders dominate the list',
+          copy: 'Most visible items are closed successfully. Use them as reference cases or a support audit trail.',
+        };
+      }
+      return {
+        title: 'No urgent customer action detected',
+        copy: 'The current filter result does not show an immediately actionable lifecycle state.',
+      };
+    }
+
+    function updateStats(items) {
+      const total = items.length;
+      const completed = items.filter((item) => normalizeStatus(item) === 'completed').length;
+      const open = items.filter((item) => ['draft', 'awaiting_payment', 'payment_confirmed', 'processing'].includes(normalizeStatus(item))).length;
+      const action = items.filter((item) => ['draft', 'awaiting_payment'].includes(normalizeStatus(item))).length;
+      document.getElementById('stat-total').textContent = String(total);
+      document.getElementById('stat-open').textContent = String(open);
+      document.getElementById('stat-completed').textContent = String(completed);
+      document.getElementById('stat-action').textContent = String(action);
+    }
+
+    function applyFilters() {
+      const status = filterStatusEl.value;
+      const q = filterSearchEl.value.trim().toLowerCase();
+      const sort = filterSortEl.value;
+
+      let filtered = orders.filter((order) => {
+        const statusMatch = status === 'all' || normalizeStatus(order) === status;
+        const haystack = [
+          order.publicId,
+          order.assetCode,
+          order.asset_code,
+          order.networkCode,
+          order.network_code,
+          order.directionCode,
+          order.direction_code,
+        ].filter(Boolean).join(' ').toLowerCase();
+        const searchMatch = !q || haystack.includes(q);
+        return statusMatch && searchMatch;
+      });
+
+      filtered = filtered.sort((a, b) => {
+        if (sort === 'updated_asc') return new Date(a.updatedAt || 0) - new Date(b.updatedAt || 0);
+        if (sort === 'fiat_desc') return Number(b.fiatAmount || b.fiat_amount || 0) - Number(a.fiatAmount || a.fiat_amount || 0);
+        if (sort === 'fiat_asc') return Number(a.fiatAmount || a.fiat_amount || 0) - Number(b.fiatAmount || b.fiat_amount || 0);
+        return new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0);
+      });
+
+      renderOrders(filtered);
+      renderPriority(filtered);
+      updateStats(filtered);
+      summaryEl.textContent = `${filtered.length} visible of ${orders.length} total`;
+      visibleCountEl.textContent = `${filtered.length} shown`;
+      const insight = statusInsight(filtered);
+      insightTitleEl.textContent = insight.title;
+      insightCopyEl.textContent = insight.copy;
+    }
+
+    function renderPriority(items) {
+      const priority = items
+        .filter((item) => ['awaiting_payment', 'draft', 'payment_confirmed', 'processing'].includes(normalizeStatus(item)))
+        .slice(0, 4);
+      if (!priority.length) {
+        priorityEl.innerHTML = '<p class="empty">No orders in the priority queue for the current filter.</p>';
         return;
       }
-      body.innerHTML = filtered.map((item) => `
-        <tr>
-          <td class="mono">${item.publicId}</td>
-          <td><span class="status ${item.statusCode}">${item.statusCode}</span></td>
-          <td>${item.directionCode}</td>
-          <td>${fmt(item.fiatAmount)}</td>
-          <td>${fmt(item.cryptoAmount)}</td>
-          <td>${date(item.updatedAt)}</td>
-          <td><a class="action-link" href="/orders/${item.publicId}">Open</a></td>
-        </tr>
+      priorityEl.innerHTML = priority.map((item) => `
+        <div class="priority-item">
+          <div class="priority-copy">
+            <strong>${orderTitle(item)}</strong>
+            <p>${normalizeStatus(item)} · ${item.directionCode || item.direction_code || '—'}</p>
+            <p>${fmt(item.fiatAmount || item.fiat_amount, 2)} fiat · updated ${date(item.updatedAt)}</p>
+          </div>
+          <a href="/orders/${orderTitle(item)}">Open</a>
+        </div>
       `).join('');
     }
 
+    function renderOrders(items) {
+      if (!items.length) {
+        listEl.innerHTML = '<p class="empty">No orders match the current filters.</p>';
+        return;
+      }
+
+      listEl.innerHTML = items.map((order) => {
+        const status = normalizeStatus(order);
+        const publicId = orderTitle(order);
+        const direction = order.directionCode || order.direction_code || '—';
+        const asset = order.assetCode || order.asset_code || '—';
+        const network = order.networkCode || order.network_code || '—';
+        const fiat = fmt(order.fiatAmount || order.fiat_amount, 2);
+        const crypto = fmt(order.cryptoAmount || order.crypto_amount, 8);
+        const rate = fmt(order.rate, 6);
+        const actionCopy = status === 'awaiting_payment'
+          ? 'Customer should complete payment and submit proof.'
+          : status === 'draft'
+            ? 'Recently created order waiting for first action.'
+            : status === 'processing'
+              ? 'Execution is in progress.'
+              : status === 'completed'
+                ? 'Lifecycle closed successfully.'
+                : 'Open detail page for full lifecycle context.';
+
+        return `
+          <article class="order-card">
+            <div class="order-head">
+              <div class="order-copy">
+                <h4 class="mono">${publicId}</h4>
+                <p>${direction} · ${asset} via ${network}</p>
+              </div>
+              <span class="status ${status}">${status}</span>
+            </div>
+            <div class="amounts">
+              <div><span>Fiat</span><strong>${fiat}</strong></div>
+              <div><span>Crypto</span><strong>${crypto}</strong></div>
+              <div><span>Rate</span><strong>${rate}</strong></div>
+            </div>
+            <div class="order-meta">
+              <div class="meta-line">
+                <span>Updated: ${date(order.updatedAt)}</span>
+                <span>Created: ${date(order.createdAt)}</span>
+              </div>
+              <span class="tiny">${actionCopy}</span>
+            </div>
+            <div class="cta-row">
+              <span class="tiny">Open the detail view for timeline, actions, notifications and documents.</span>
+              <a href="/orders/${publicId}">Open detail</a>
+            </div>
+          </article>
+        `;
+      }).join('');
+    }
+
     async function loadOrders() {
+      refreshBtn.disabled = true;
+      summaryEl.textContent = 'Loading orders…';
+      setNotice('');
       try {
-        setNotice('');
-        body.innerHTML = '<tr><td colspan="7" class="empty">Loading orders…</td></tr>';
-        const response = await fetch(`${API}/auth/me/orders-summary`);
-        const data = await response.json();
-        if (!response.ok) throw new Error(data?.message || 'Failed to load orders');
-        const item = data.item || {};
-        updateStats(item.metrics || {});
-        renderRows(item.orders || []);
+        const response = await fetch(`${API}/auth/me/orders-summary`, {
+          headers: { 'Content-Type': 'application/json' },
+        });
+        const payload = await response.json().catch(() => null);
+        if (!response.ok) {
+          throw new Error(payload?.message || `HTTP ${response.status}`);
+        }
+        orders = Array.isArray(payload?.items) ? payload.items : [];
+        applyFilters();
       } catch (error) {
-        console.error('customer orders load failed', error);
-        body.innerHTML = '<tr><td colspan="7" class="empty">Unable to load orders.</td></tr>';
-        setNotice(error.message || 'Unknown error');
+        listEl.innerHTML = '<p class="empty">Unable to load customer orders.</p>';
+        priorityEl.innerHTML = '<p class="empty">Unable to load priority queue.</p>';
+        summaryEl.textContent = 'Load failed';
+        setNotice(error.message || 'Failed to load orders.');
+      } finally {
+        refreshBtn.disabled = false;
       }
     }
 
-    filter.addEventListener('change', loadOrders);
-    document.getElementById('refresh').addEventListener('click', loadOrders);
+    filterStatusEl.addEventListener('change', applyFilters);
+    filterSearchEl.addEventListener('input', applyFilters);
+    filterSortEl.addEventListener('change', applyFilters);
+    refreshBtn.addEventListener('click', loadOrders);
+
     loadOrders();
   </script>
 </BaseLayout>

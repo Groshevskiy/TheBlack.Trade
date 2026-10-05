@@ -1,7 +1,7 @@
 import { tt as __exportAll } from "./errors_Co3p8A61.mjs";
 import { C as createAstro, d as maybeRenderHead, i as renderComponent, m as defineScriptVars, u as renderTemplate } from "./server_4uPAlPSy.mjs";
 import { t as createComponent } from "./compiler_DNiS3Csg.mjs";
-import { t as $$BaseLayout } from "./BaseLayout_BpIUrvSy.mjs";
+import { t as $$BaseLayout } from "./BaseLayout__drHlUMR.mjs";
 //#region src/pages/operator/orders/[id].astro
 var _id__exports = /* @__PURE__ */ __exportAll({
 	default: () => $$Id,

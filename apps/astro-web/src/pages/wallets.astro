@@ -1,103 +1,218 @@
 ---
 import BaseLayout from "../layouts/BaseLayout.astro";
+import CabinetHero from "../components/CabinetHero.astro";
+import MetricCard from "../components/MetricCard.astro";
+import SectionHead from "../components/SectionHead.astro";
 ---
 <BaseLayout title="Wallets">
-  <section class="card hero">
-    <div>
-      <p class="eyebrow">Customer cabinet</p>
-      <h2>Wallets & payout methods</h2>
-      <p class="lede">Сохранённые криптокошельки и фиатные реквизиты для сделок клиента.</p>
-    </div>
-    <button id="refresh" type="button">Refresh</button>
-  </section>
+  <CabinetHero
+    title="Settlement destinations"
+    lede="Единый экран для crypto wallets и fiat payout methods, связанных с customer lifecycle, order creation и последующим settlement flow."
+    actionHref="/"
+    actionLabel="Create order"
+  />
 
   <div id="notice" class="notice" hidden></div>
 
-  <section class="grid stats">
-    <div class="card stat"><span>Wallets</span><strong id="walletCount">—</strong></div>
-    <div class="card stat"><span>Verified wallets</span><strong id="verifiedCount">—</strong></div>
-    <div class="card stat"><span>Payout methods</span><strong id="payoutCount">—</strong></div>
-    <div class="card stat"><span>Active orders</span><strong id="ordersCount">—</strong></div>
+  <section class="metrics-grid">
+    <MetricCard
+      label="Saved wallets"
+      valueId="walletCount"
+      description="Crypto destinations available for future payout or settlement steps."
+      accent={true}
+    />
+    <MetricCard
+      label="Verified wallets"
+      valueId="verifiedCount"
+      description="Wallets already marked as verified inside the cabinet."
+    />
+    <MetricCard
+      label="Payout methods"
+      valueId="payoutCount"
+      description="Saved fiat requisites that can be used in exchange flow."
+    />
+    <MetricCard
+      label="Active orders"
+      valueId="ordersCount"
+      description="Open customer orders that may depend on settlement details."
+    />
   </section>
 
-  <section class="grid panels">
-    <section class="card">
-      <div class="panel-head">
-        <div><p class="eyebrow">Crypto</p><h2>Wallet addresses</h2></div>
-        <span id="walletLabel" class="tiny">—</span>
-      </div>
-      <div id="walletsList" class="feed"><p class="empty">Loading wallets…</p></div>
-    </section>
+  <section class="layout">
+    <div class="stack">
+      <section class="card filters-card">
+        <SectionHead eyebrow="Wallets" title="Crypto destinations" metaId="walletLabel" metaText="Loading wallets…" />
+        <div id="walletsList" class="feed"><p class="empty">Loading wallets…</p></div>
+      </section>
 
-    <section class="card">
-      <div class="panel-head">
-        <div><p class="eyebrow">Fiat</p><h2>Payout requisites</h2></div>
-        <span id="payoutLabel" class="tiny">—</span>
-      </div>
-      <div id="payoutsList" class="feed"><p class="empty">Loading payout methods…</p></div>
-    </section>
-  </section>
+      <section class="card filters-card">
+        <SectionHead eyebrow="Payouts" title="Fiat requisites" metaId="payoutLabel" metaText="Loading payout methods…" />
+        <div id="payoutsList" class="feed"><p class="empty">Loading payout methods…</p></div>
+      </section>
+    </div>
 
-  <section class="card tip">
-    <p class="eyebrow">How it works</p>
-    <h2>Use your saved details in a new order</h2>
-    <p class="lede">Выбор wallet и payout requisite происходит при создании сделки. В этом MVP экран показывает уже сохранённые безопасные данные и их связь с последними заявками.</p>
-    <a href="/orders">Open orders</a>
+    <aside class="stack">
+      <section class="card insight-card">
+        <p class="eyebrow">Settlement insight</p>
+        <h3 id="insightTitle">Preparing insight…</h3>
+        <p class="lede" id="insightCopy">This panel highlights whether the customer already has enough saved settlement details for active orders.</p>
+      </section>
+
+      <section class="card">
+        <SectionHead eyebrow="Recent usage" title="Lifecycle context" linkHref="/orders" linkLabel="Open orders" />
+        <div id="ordersList" class="feed"><p class="empty">Loading orders…</p></div>
+      </section>
+
+      <section class="card tip-card">
+        <p class="eyebrow">How to use</p>
+        <h3>From setup to execution</h3>
+        <p class="lede">Создание сделки начинается с quote и order, а этот экран помогает быстро проверить, есть ли у клиента подходящие wallet и payout details до начала settlement stage.</p>
+        <div class="quick-links">
+          <a href="/">Create a new order</a>
+          <a href="/orders">Open order list</a>
+          <a href="/account">Review customer account</a>
+        </div>
+      </section>
+    </aside>
   </section>
 
   <style>
-    .hero,.panel-head,.stat{display:flex;justify-content:space-between;gap:16px;align-items:center}.hero{margin-bottom:16px;flex-wrap:wrap}.hero h2,.panel-head h2,.tip h2{margin:4px 0 0}.eyebrow{margin:0;color:#8b98ab;text-transform:uppercase;letter-spacing:.08em;font-size:12px;font-weight:700}.lede,.tiny{color:#b6c0cf}.tiny{font-size:12px}.hero button{background:#0f1115;color:#f5f7fa;border:1px solid #2a2f3a;border-radius:10px;padding:10px 14px;font:inherit;cursor:pointer}.notice{margin:0 0 16px;padding:12px 14px;border:1px solid #7f1d1d;background:#2b1618;border-radius:10px;color:#fecaca}.stats{margin-bottom:16px}.stat{align-items:flex-start;flex-direction:column}.stat span{color:#8b98ab;font-size:13px}.stat strong{font-size:28px}.panels{align-items:start;margin-bottom:16px}.feed{display:grid;gap:12px}.feed-item{padding:14px;border:1px solid #2a2f3a;border-radius:12px;background:#11151c}.feed-item h3,.feed-item p{margin:0}.feed-item p{color:#b6c0cf;font-size:14px}.feed-meta{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:8px}.badge{display:inline-flex;padding:5px 10px;border-radius:999px;font-size:12px;font-weight:700;border:1px solid currentColor}.badge.good{color:#86efac}.badge.neutral{color:#7dd3fc}.badge.warn{color:#fde68a}.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}.empty{color:#8b98ab}.tip a{display:inline-block;margin-top:14px;color:#7dd3fc;text-decoration:none}@media(max-width:860px){.hero button{width:100%}}
+    .notice{margin:0 0 16px;padding:12px 14px;border:1px solid #7f1d1d;background:#2b1618;border-radius:10px;color:#fecaca}.metrics-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin-bottom:16px}.feed-meta{display:flex;justify-content:space-between;gap:16px;align-items:center;flex-wrap:wrap}.insight-card h3,.tip-card h3{margin:4px 0 0}.eyebrow{margin:0;color:#8b98ab;text-transform:uppercase;letter-spacing:.08em;font-size:12px;font-weight:700}.lede,.tiny,.feed-item p{color:#b6c0cf}.layout{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(300px,.95fr);gap:16px}.stack,.feed,.quick-links{display:grid;gap:16px}.filters-card,.tip-card{min-height:0}.feed-item{padding:14px;border:1px solid #2a2f3a;border-radius:12px;background:#11151c;display:grid;gap:8px}.feed-item h4,.feed-item p{margin:0}.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}.empty{color:#8b98ab}.text-link{color:#7dd3fc}.quick-links a{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border:1px solid #2a2f3a;border-radius:12px;background:#0f1115}.status-pill{display:inline-flex;align-items:center;padding:5px 10px;border-radius:999px;font-size:12px;font-weight:700;border:1px solid currentColor}.status-pill.good{color:#86efac}.status-pill.warn{color:#fde68a}.status-pill.neutral{color:#7dd3fc}@media(max-width:1120px){.metrics-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.layout{grid-template-columns:1fr}}@media(max-width:760px){.metrics-grid{grid-template-columns:1fr}.feed-meta{align-items:flex-start;flex-direction:column}}
   </style>
 
   <script>
     const API = `${window.location.protocol}//${window.location.hostname}:4000/api`;
+    const walletLabelEl = document.getElementById('walletLabel');
+    const payoutLabelEl = document.getElementById('payoutLabel');
+    const walletsListEl = document.getElementById('walletsList');
+    const payoutsListEl = document.getElementById('payoutsList');
+    const ordersListEl = document.getElementById('ordersList');
+    const noticeEl = document.getElementById('notice');
+    const refreshBtn = document.getElementById('refresh');
+    const insightTitleEl = document.getElementById('insightTitle');
+    const insightCopyEl = document.getElementById('insightCopy');
+
     const cut = (value) => value ? `${String(value).slice(0, 11)}…${String(value).slice(-6)}` : '—';
     const date = (value) => value ? new Date(value).toLocaleString('ru-RU', { dateStyle: 'short', timeStyle: 'short' }) : '—';
-    const setNotice = (message = '') => {
-      const box = document.getElementById('notice');
-      box.hidden = !message;
-      box.textContent = message;
-    };
-    function renderWallets(items, metrics) {
-      document.getElementById('walletCount').textContent = String(metrics.wallets ?? 0);
-      document.getElementById('verifiedCount').textContent = String(metrics.verifiedWallets ?? 0);
-      document.getElementById('walletLabel').textContent = `${items.length} saved · ${metrics.networks ?? 0} networks`;
-      document.getElementById('walletsList').innerHTML = items.length ? items.map((item) => `
+    const pillMarkup = (text, tone) => `<span class="status-pill ${tone}">${text}</span>`;
+
+    function setNotice(message = '') {
+      noticeEl.hidden = !message;
+      noticeEl.textContent = message;
+    }
+
+    function normalizeStatus(order) {
+      return order.statusCode || order.status_code || 'draft';
+    }
+
+    function renderWallets(items = [], summary = {}) {
+      const metrics = summary.metrics || {};
+      document.getElementById('walletCount').textContent = String(metrics.total ?? items.length);
+      document.getElementById('verifiedCount').textContent = String(metrics.verified ?? items.filter((item) => item.isVerified || item.is_verified).length);
+      walletLabelEl.textContent = `${items.length} saved · ${metrics.networks ?? 0} networks`;
+      walletsListEl.innerHTML = items.length ? items.map((item) => `
         <article class="feed-item">
-          <div class="feed-meta"><strong>${item.label || 'Wallet'}</strong><span class="badge ${item.isVerified ? 'good' : 'warn'}">${item.isVerified ? 'verified' : 'unverified'}</span></div>
+          <div class="feed-meta">
+            <h4>${item.label || item.assetCode || item.asset_code || 'Wallet'}</h4>
+            ${pillMarkup((item.isVerified || item.is_verified) ? 'verified' : 'unverified', (item.isVerified || item.is_verified) ? 'good' : 'warn')}
+          </div>
+          <p>${item.assetCode || item.asset_code || '—'} · ${item.networkCode || item.network_code || '—'}</p>
           <p class="mono">${cut(item.address)}</p>
           <p>Added ${date(item.createdAt)}</p>
         </article>
       `).join('') : '<p class="empty">No saved wallets yet.</p>';
     }
-    function renderPayouts(items, metrics) {
-      document.getElementById('payoutCount').textContent = String(metrics.payoutRequisites ?? 0);
-      document.getElementById('payoutLabel').textContent = `${items.length} saved`;
-      document.getElementById('payoutsList').innerHTML = items.length ? items.map((item) => `
+
+    function renderPayouts(items = []) {
+      document.getElementById('payoutCount').textContent = String(items.length);
+      payoutLabelEl.textContent = `${items.length} saved methods`;
+      payoutsListEl.innerHTML = items.length ? items.map((item) => `
         <article class="feed-item">
-          <div class="feed-meta"><strong>${item.label || 'Payout method'}</strong><span class="badge neutral">${item.status || 'saved'}</span></div>
-          <p class="mono">${cut(item.value || item.requisiteValue || item.accountNumber)}</p>
-          <p>Added ${date(item.createdAt)}</p>
+          <div class="feed-meta">
+            <h4>${item.bankName || item.providerName || 'Payout method'}</h4>
+            ${pillMarkup(item.fiatCurrencyCode || item.fiat_currency_code || '—', 'neutral')}
+          </div>
+          <p>${item.recipientName || item.accountHolder || 'Recipient not specified'}</p>
+          <p class="mono">${item.maskedAccountNumber || item.masked_details || item.phoneNumber || '—'}</p>
+          <p>Updated ${date(item.updatedAt || item.createdAt)}</p>
         </article>
-      `).join('') : '<p class="empty">No payout methods yet.</p>';
+      `).join('') : '<p class="empty">No payout requisites saved.</p>';
     }
-    async function loadSummary() {
+
+    function renderOrders(items = []) {
+      const active = items.filter((item) => ['draft', 'awaiting_payment', 'payment_confirmed', 'processing'].includes(normalizeStatus(item)));
+      document.getElementById('ordersCount').textContent = String(active.length);
+      ordersListEl.innerHTML = active.length ? active.slice(0, 4).map((item) => `
+        <article class="feed-item">
+          <div class="feed-meta">
+            <h4>${item.publicId || item.public_id || '—'}</h4>
+            ${pillMarkup(normalizeStatus(item), 'neutral')}
+          </div>
+          <p>${item.directionCode || item.direction_code || '—'} · ${item.assetCode || item.asset_code || '—'}</p>
+          <p>Updated ${date(item.updatedAt)}</p>
+          <a class="text-link" href="/orders/${item.publicId || item.public_id}">Open detail</a>
+        </article>
+      `).join('') : '<p class="empty">No active orders currently rely on saved settlement details.</p>';
+    }
+
+    function renderInsight(wallets = [], payouts = [], orders = []) {
+      const activeOrders = orders.filter((item) => ['draft', 'awaiting_payment', 'payment_confirmed', 'processing'].includes(normalizeStatus(item)));
+      if (activeOrders.length && (!wallets.length || !payouts.length)) {
+        insightTitleEl.textContent = 'Settlement setup looks incomplete';
+        insightCopyEl.textContent = 'There are active orders, but one of the settlement destination groups is sparse. Review wallets and payout methods before execution reaches the final stage.';
+        return;
+      }
+      if (wallets.length && payouts.length) {
+        insightTitleEl.textContent = 'Settlement profile is ready';
+        insightCopyEl.textContent = 'The customer already has both crypto wallets and fiat payout details saved, which reduces friction for future lifecycle steps.';
+        return;
+      }
+      if (wallets.length || payouts.length) {
+        insightTitleEl.textContent = 'Partial settlement data available';
+        insightCopyEl.textContent = 'Only one side of the settlement profile is populated. Use this screen to understand which destination type still needs attention.';
+        return;
+      }
+      insightTitleEl.textContent = 'No settlement details saved yet';
+      insightCopyEl.textContent = 'The customer has not saved wallets or payout methods yet. Future onboarding work should start here before heavy order activity begins.';
+    }
+
+    async function fetchJson(path) {
+      const response = await fetch(`${API}${path}`);
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(payload?.message || `HTTP ${response.status}`);
+      return payload;
+    }
+
+    async function loadSettlementData() {
+      refreshBtn.disabled = true;
+      setNotice('');
       try {
-        setNotice('');
-        const response = await fetch(`${API}/wallets/summary`);
-        const data = await response.json();
-        if (!response.ok) throw new Error(data?.message || 'Unable to load wallets summary');
-        const item = data.item || {};
-        const metrics = item.metrics || {};
-        document.getElementById('ordersCount').textContent = String(metrics.activeOrders ?? 0);
-        renderWallets(item.wallets || [], metrics);
-        renderPayouts(item.payoutRequisites || [], metrics);
+        const [walletsSummary, wallets, payouts, ordersSummary] = await Promise.all([
+          fetchJson('/wallets/summary'),
+          fetchJson('/wallets'),
+          fetchJson('/payout-requisites'),
+          fetchJson('/auth/me/orders-summary'),
+        ]);
+
+        const walletItems = Array.isArray(wallets?.items) ? wallets.items : [];
+        const payoutItems = Array.isArray(payouts?.items) ? payouts.items : [];
+        const orderItems = Array.isArray(ordersSummary?.items) ? ordersSummary.items : [];
+
+        renderWallets(walletItems, walletsSummary || {});
+        renderPayouts(payoutItems);
+        renderOrders(orderItems);
+        renderInsight(walletItems, payoutItems, orderItems);
       } catch (error) {
-        console.error('wallets summary load failed', error);
-        setNotice(error.message || 'Unknown error');
+        walletsListEl.innerHTML = '<p class="empty">Unable to load wallets.</p>';
+        payoutsListEl.innerHTML = '<p class="empty">Unable to load payout methods.</p>';
+        ordersListEl.innerHTML = '<p class="empty">Unable to load lifecycle context.</p>';
+        setNotice(error.message || 'Failed to load settlement destinations.');
+      } finally {
+        refreshBtn.disabled = false;
       }
     }
-    document.getElementById('refresh').addEventListener('click', loadSummary);
-    loadSummary();
+
+    refreshBtn.addEventListener('click', loadSettlementData);
+    loadSettlementData();
   </script>
 </BaseLayout>
