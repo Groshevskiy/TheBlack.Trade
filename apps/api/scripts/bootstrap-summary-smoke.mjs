@@ -24,14 +24,14 @@ async function main() {
     await client.query(
       `INSERT INTO tb_assets (id, code, name, precision, is_active)
        VALUES ($1, 'USDT', 'Tether USD', 6, TRUE)
-       ON CONFLICT (id) DO UPDATE SET code = EXCLUDED.code, name = EXCLUDED.name, precision = EXCLUDED.precision, is_active = TRUE`,
+       ON CONFLICT (code) DO UPDATE SET name = EXCLUDED.name, precision = EXCLUDED.precision, is_active = TRUE`,
       [ids.asset],
     );
 
     await client.query(
       `INSERT INTO tb_fiat_currencies (id, code, name, precision, is_active)
        VALUES ($1, 'RUB', 'Russian Ruble', 2, TRUE)
-       ON CONFLICT (id) DO UPDATE SET code = EXCLUDED.code, name = EXCLUDED.name, precision = EXCLUDED.precision, is_active = TRUE`,
+       ON CONFLICT (code) DO UPDATE SET name = EXCLUDED.name, precision = EXCLUDED.precision, is_active = TRUE`,
       [ids.fiat],
     );
 
