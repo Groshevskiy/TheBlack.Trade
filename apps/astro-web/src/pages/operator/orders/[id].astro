@@ -76,6 +76,8 @@ const { id } = Astro.params;
   <script define:vars={{ id }}>
     const API = `${window.location.protocol}//${window.location.hostname}:4000/api`;
     const orderId = id;
+    const resolvedActor = window.__TBT_ACTOR__ || {};
+    const ACTOR_OPERATOR_ID = resolvedActor.operatorId || 'demo-operator';
     const $ = (s) => document.querySelector(s);
     const fmt = (v) => Number(v ?? 0).toLocaleString('en-US');
     const date = (v) => v ? new Date(v).toLocaleString('ru-RU', { dateStyle: 'short', timeStyle: 'short' }) : '—';
@@ -94,11 +96,32 @@ const { id } = Astro.params;
       return data;
     }
 
+    function statusLabel(status) {
+      switch (status) {
+        case 'draft':
+          return 'Draft';
+        case 'awaiting_payment':
+          return 'Awaiting payment';
+        case 'payment_confirmed':
+          return 'Payment confirmed';
+        case 'processing':
+          return 'Processing';
+        case 'completed':
+          return 'Completed';
+        case 'cancelled':
+          return 'Cancelled';
+        case 'expired':
+          return 'Expired';
+        default:
+          return status || 'Unknown';
+      }
+    }
+
     function renderSummary(order) {
       $('#summary-title').textContent = `${fmt(order.fiatAmount)} fiat → ${fmt(order.cryptoAmount)} crypto`;
       $('#summary-subtitle').textContent = `Quote ${cut(order.quoteId)} · User ${cut(order.userId)}`;
       $('#publicId').textContent = order.publicId;
-      $('#status').textContent = order.statusCode;
+      $('#status').textContent = statusLabel(order.statusCode);
       $('#direction').textContent = order.directionCode;
       $('#fiat').textContent = fmt(order.fiatAmount);
       $('#crypto').textContent = fmt(order.cryptoAmount);
@@ -108,12 +131,78 @@ const { id } = Astro.params;
       $('#updated').textContent = date(order.updatedAt);
     }
 
+    function actionLabel(actionCode) {
+      switch (actionCode) {
+        case 'request_payment':
+          return 'Request payment';
+        case 'confirm_payment':
+          return 'Confirm payment';
+        case 'start_processing':
+          return 'Start processing';
+        case 'complete':
+          return 'Complete order';
+        case 'cancel':
+          return 'Cancel order';
+        default:
+          return actionCode || 'Action';
+      }
+    }
+
+    function documentStatusLabel(status) {
+      switch (status) {
+        case 'submitted':
+          return 'Submitted';
+        case 'approved':
+          return 'Approved';
+        case 'rejected':
+          return 'Rejected';
+        case 'pending':
+          return 'Pending';
+        default:
+          return status || 'Unknown';
+      }
+    }
+
+    function documentTypeLabel(documentType) {
+      switch (documentType) {
+        case 'payment_proof':
+          return 'Payment proof';
+        default:
+          return documentType || 'Document';
+      }
+    }
+
+    function notificationLabel(templateCode, title) {
+      if (title) return title;
+      switch (templateCode) {
+        case 'order_status_changed':
+          return 'Order status update';
+        case 'document_status_changed':
+          return 'Document review update';
+        default:
+          return templateCode || 'Notification';
+      }
+    }
+
+    function timelineEventLabel(eventType) {
+      switch (eventType) {
+        case 'status_changed':
+          return 'Status updated';
+        case 'document_submitted':
+          return 'Document submitted';
+        case 'document_status_changed':
+          return 'Document review updated';
+        default:
+          return eventType || 'event';
+      }
+    }
+
     function renderTimeline(items) {
       $('#timeline-count').textContent = `${items.length} events`;
       $('#timeline').innerHTML = items.length ? items.map((item) => `
         <article class="feed-item">
-          <div class="feed-meta"><strong>${item.eventType}</strong><span>${date(item.createdAt)}</span></div>
-          <p>${item.fromStatus || '—'} → ${item.toStatus || '—'}</p>
+          <div class="feed-meta"><strong>${timelineEventLabel(item.eventType)}</strong><span>${date(item.createdAt)}</span></div>
+          <p>${statusLabel(item.fromStatus) || '—'} → ${statusLabel(item.toStatus) || '—'}</p>
           <p>${item.actorType || 'system'}${item.actorId ? ` · ${item.actorId}` : ''}</p>
         </article>`).join('') : '<p class="empty">No events yet.</p>';
     }
@@ -122,30 +211,39 @@ const { id } = Astro.params;
       $('#notifications-count').textContent = `${items.length} items`;
       $('#notifications').innerHTML = items.length ? items.map((item) => `
         <article class="feed-item">
-          <div class="feed-meta"><strong>${item.title}</strong><span>${date(item.createdAt)}</span></div>
+          <div class="feed-meta"><strong>${notificationLabel(item.templateCode || item.template_code, item.title)}</strong><span>${date(item.createdAt)}</span></div>
           <p>${item.body}</p>
           <p>${item.channel}</p>
         </article>`).join('') : '<p class="empty">No notifications yet.</p>';
     }
 
     function renderActions(items) {
-      $('#actions').innerHTML = items.length ? items.map((item) => `
-        <div class="action-row">
+      $('#actions').innerHTML = items.length ? items.map((item) => {
+        const code = item.code || item.actionCode || item.action_code;
+        const label = item.label || code;
+        const nextStatus = item.next_status || item.nextStatus;
+        const detail = item.hint || (nextStatus ? `Next status: ${statusLabel(nextStatus)}` : 'Available action from current order state.');
+        const tone = code === 'cancel' ? 'danger' : '';
+        return `
+        <div class="action-row ${tone}">
           <div>
-            <strong>${item.code}</strong>
-            <p>${item.label || item.code}</p>
+            <strong>${label}</strong>
+            <p>${detail}</p>
           </div>
-          <button type="button" data-action="${item.code}">Run</button>
-        </div>`).join('') : '<p class="empty">No actions available.</p>';
+          <button type="button" data-action="${code}">${label}</button>
+        </div>`;
+      }).join('') : '<p class="empty">No actions available.</p>';
 
       document.querySelectorAll('[data-action]').forEach((button) => {
         button.addEventListener('click', async () => {
           try {
+            const actionCode = button.dataset.action;
             await fetchJson(`${API}/orders/${orderId}/actions`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ action_code: button.dataset.action, actor_type: 'operator', actor_id: 'demo-operator' }),
+              body: JSON.stringify({ action_code: actionCode, operator_id: ACTOR_OPERATOR_ID, idempotency_key: (globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`) }),
             });
+            notify(`${actionLabel(actionCode)} completed successfully.`, 'success');
             await load();
           } catch (error) {
             notify(error.message || 'Unable to execute action');
@@ -158,7 +256,7 @@ const { id } = Astro.params;
       $('#documents-count').textContent = `${items.length} docs`;
       $('#documents').innerHTML = items.length ? items.map((item) => `
         <article class="feed-item">
-          <div class="feed-meta"><strong>${item.documentType}</strong><span class="status ${item.status}">${item.status}</span></div>
+          <div class="feed-meta"><strong>${documentTypeLabel(item.documentType || item.document_type)}</strong><span class="status ${item.status}">${documentStatusLabel(item.status)}</span></div>
           <p class="mono">${item.id}</p>
           <p>Created: ${date(item.createdAt)}</p>
           <div class="doc-actions">
@@ -173,8 +271,9 @@ const { id } = Astro.params;
             await fetchJson(`${API}/documents/${button.dataset.doc}/status`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ status: button.dataset.status, operator_id: 'demo-operator' }),
+              body: JSON.stringify({ status: button.dataset.status, operator_id: ACTOR_OPERATOR_ID }),
             });
+            notify(`Document ${documentStatusLabel(button.dataset.status)} successfully.`, 'success');
             await load();
           } catch (error) {
             notify(error.message || 'Unable to update document');

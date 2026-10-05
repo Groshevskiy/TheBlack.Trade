@@ -79,37 +79,35 @@ async function main() {
     method: 'POST',
     body: JSON.stringify({
       status_code: 'awaiting_payment',
-      actor_type: 'system',
-      actor_id: 'ci-lifecycle-bootstrap',
+      operator_id: 'ci-lifecycle-bootstrap',
       payload: { source: 'lifecycle-smoke' },
     }),
   });
   assert(updatedToAwaiting?.item?.statusCode === 'awaiting_payment', 'order must move to awaiting_payment');
 
-  const confirmPayment = await api(`/orders/${createdOrder.publicId}/actions`, {
+  const createdDocument = await api('/documents', {
     method: 'POST',
     body: JSON.stringify({
-      action_code: 'confirm_payment',
-      operator_id: 'ci-operator-1',
-      idempotency_key: `confirm-${createdOrder.publicId}`,
-      request_id: `req-confirm-${createdOrder.publicId}`,
-      payload: { source: 'lifecycle-smoke' },
+      owner_user_id: fixture.userId,
+      order_id: createdOrder.id,
+      document_type: 'payment_proof',
+      file_id: `ci-payment-proof-${createdOrder.publicId}`,
+      metadata: { source: 'lifecycle-smoke' },
     }),
   });
-  assert(confirmPayment?.order?.statusCode === 'payment_confirmed', 'confirm_payment must move order to payment_confirmed');
-  assert(confirmPayment?.idempotent_replay === false, 'first confirm_payment must not be idempotent replay');
+  assert(createdDocument?.item?.id, 'document creation must return item.id');
 
-  const confirmReplay = await api(`/orders/${createdOrder.publicId}/actions`, {
+  assert(createdDocument?.item?.status === 'submitted', 'created payment proof must start in submitted status');
+
+  const approvedDocument = await api(`/documents/${createdDocument.item.id}/status`, {
     method: 'POST',
-    body: JSON.stringify({
-      action_code: 'confirm_payment',
-      operator_id: 'ci-operator-1',
-      idempotency_key: `confirm-${createdOrder.publicId}`,
-      request_id: `req-confirm-${createdOrder.publicId}`,
-      payload: { source: 'lifecycle-smoke' },
-    }),
+    body: JSON.stringify({ status: 'approved', operator_id: 'ci-operator-1' }),
   });
-  assert(confirmReplay?.idempotent_replay === true, 'replayed confirm_payment must be idempotent');
+  assert(approvedDocument?.item?.status === 'approved', 'payment proof must be approved');
+
+  const paymentConfirmedOrder = await api(`/orders/${createdOrder.publicId}`);
+  assert(paymentConfirmedOrder?.statusCode === 'payment_confirmed', 'approved payment proof must move order to payment_confirmed');
+
 
   const startProcessing = await api(`/orders/${createdOrder.publicId}/actions`, {
     method: 'POST',
@@ -135,29 +133,19 @@ async function main() {
   });
   assert(complete?.order?.statusCode === 'completed', 'complete must move order to completed');
 
-  const createdDocument = await api('/documents', {
-    method: 'POST',
-    body: JSON.stringify({
-      owner_user_id: fixture.userId,
-      order_id: createdOrder.id,
-      document_type: 'payment_proof',
-      file_id: `ci-payment-proof-${createdOrder.publicId}`,
-      metadata: { source: 'lifecycle-smoke' },
-    }),
-  });
-  assert(createdDocument?.item?.id, 'document creation must return item.id');
-
   const order = await api(`/orders/${createdOrder.publicId}`);
   assert(order?.statusCode === 'completed', `expected final order status completed, got ${order?.statusCode}`);
 
   const actions = await api(`/orders/${createdOrder.publicId}/actions`);
-  assert(Array.isArray(actions?.items) && actions.items.length >= 3, 'order actions must contain at least 3 items');
+  assert(Array.isArray(actions?.items), 'order actions must return an items array');
+  assert(actions.items.length === 0, 'completed order must not expose further actions');
 
   const timeline = await api(`/orders/${createdOrder.publicId}/timeline`);
   assert(Array.isArray(timeline?.items), 'timeline.items must be an array');
   assert(hasTransition(timeline.items, null, 'draft', 'order_created'), 'timeline must contain order_created');
   assert(hasTransition(timeline.items, 'draft', 'awaiting_payment', 'status_changed'), 'timeline must contain status_changed to awaiting_payment');
-  assert(hasTransition(timeline.items, 'awaiting_payment', 'payment_confirmed', 'action_confirm_payment'), 'timeline must contain confirm_payment transition');
+  assert(hasTransition(timeline.items, 'awaiting_payment', 'payment_confirmed', 'status_changed'), 'timeline must contain payment proof approval status transition');
+  assert(timeline.items.some((item) => item.eventType === 'document_reviewed'), 'timeline must contain document_reviewed event');
   assert(hasTransition(timeline.items, 'payment_confirmed', 'processing', 'action_start_processing'), 'timeline must contain start_processing transition');
   assert(hasTransition(timeline.items, 'processing', 'completed', 'action_complete'), 'timeline must contain complete transition');
   assert(timeline.items.some((item) => item.eventType === 'document_submitted'), 'timeline must contain document_submitted event');
@@ -174,7 +162,6 @@ async function main() {
   assert(Array.isArray(auditLogs?.items), 'auditLogs.items must be an array');
   const orderAuditLogs = auditLogs.items;
   assert(orderAuditLogs.some((item) => item?.action === 'order.status_changed'), 'audit logs must include status change');
-  assert(orderAuditLogs.some((item) => item?.action === 'order.action.confirm_payment'), 'audit logs must include confirm_payment action');
   assert(orderAuditLogs.some((item) => item?.action === 'order.action.start_processing'), 'audit logs must include start_processing action');
   assert(orderAuditLogs.some((item) => item?.action === 'order.action.complete'), 'audit logs must include complete action');
 

@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { randomUUID } from 'node:crypto';
 import { and, desc, eq } from 'drizzle-orm';
 import { db } from '../../db/index.js';
 import { tbAuditLogs, tbDocuments, tbNotifications, tbOrders, tbOrderTimeline, tbUsers, tbWebhookEvents } from '../../db/schema.js';
@@ -67,6 +68,83 @@ export class DocumentsService {
     }
     const metadata = { ...(document.metadataJson as Record<string, unknown> ?? {}), ...(input.reason ? { review_reason: input.reason } : {}) };
     const [updated] = await db.update(tbDocuments).set({ status: input.status, metadataJson: metadata }).where(eq(tbDocuments.id, id)).returning();
+    let orderStatusChange: { fromStatus: string; toStatus: string } | null = null;
+
+    if (updated.orderId && updated.documentType === 'payment_proof') {
+      const orderRows = await db.select().from(tbOrders).where(eq(tbOrders.id, updated.orderId)).limit(1);
+      const order = orderRows[0];
+      if (order) {
+        if (updated.status === 'approved' && order.statusCode === 'awaiting_payment') {
+          orderStatusChange = { fromStatus: order.statusCode, toStatus: 'payment_confirmed' };
+        }
+        if (updated.status === 'rejected' && order.statusCode === 'payment_confirmed') {
+          orderStatusChange = { fromStatus: order.statusCode, toStatus: 'awaiting_payment' };
+        }
+        if (orderStatusChange) {
+          await db.update(tbOrders).set({ statusCode: orderStatusChange.toStatus, updatedAt: new Date() }).where(eq(tbOrders.id, order.id));
+          await db.insert(tbOrderTimeline).values({
+            orderId: order.id,
+            eventType: 'status_changed',
+            fromStatus: orderStatusChange.fromStatus,
+            toStatus: orderStatusChange.toStatus,
+            actorType: 'operator',
+            actorId: input.operator_id ?? null,
+            payloadJson: {
+              source: 'document_review',
+              document_id: updated.id,
+              document_type: updated.documentType,
+              document_status: updated.status,
+            },
+          });
+          await db.insert(tbAuditLogs).values({
+            actorType: 'operator',
+            actorId: input.operator_id ?? null,
+            action: 'order.status_changed',
+            entityType: 'order',
+            entityId: order.id,
+            diffJson: {
+              from_status: orderStatusChange.fromStatus,
+              to_status: orderStatusChange.toStatus,
+              source: 'document_review',
+              document_id: updated.id,
+            },
+            requestId: `doc-review-${updated.id}-${randomUUID()}` ,
+          });
+          await db.insert(tbWebhookEvents).values({
+            eventType: 'status_changed',
+            entityType: 'order',
+            entityId: order.id,
+            payloadJson: {
+              order_id: order.id,
+              order_public_id: order.publicId,
+              from_status: orderStatusChange.fromStatus,
+              to_status: orderStatusChange.toStatus,
+              source: 'document_review',
+              document_id: updated.id,
+              document_type: updated.documentType,
+              document_status: updated.status,
+            },
+            status: 'pending',
+          });
+          await db.insert(tbNotifications).values({
+            userId: order.userId,
+            channel: 'in_app',
+            templateCode: 'order_status_changed',
+            title: 'Order status updated',
+            body: `Order ${order.publicId} moved to ${orderStatusChange.toStatus.replace(/_/g, ' ')}` ,
+            payloadJson: {
+              order_id: order.id,
+              order_public_id: order.publicId,
+              from_status: orderStatusChange.fromStatus,
+              to_status: orderStatusChange.toStatus,
+              source: 'document_review',
+              document_id: updated.id,
+            },
+          });
+        }
+      }
+    }
+
     if (updated.orderId) {
       await db.insert(tbOrderTimeline).values({
         orderId: updated.orderId,
@@ -75,11 +153,11 @@ export class DocumentsService {
         toStatus: null,
         actorType: 'operator',
         actorId: input.operator_id ?? null,
-        payloadJson: { document_id: updated.id, document_type: updated.documentType, status: updated.status, ...(input.reason ? { reason: input.reason } : {}) },
+        payloadJson: { document_id: updated.id, document_type: updated.documentType, status: updated.status, ...(input.reason ? { reason: input.reason } : {}), ...(orderStatusChange ? { order_status_change: orderStatusChange } : {}) },
       });
     }
-    await db.insert(tbAuditLogs).values({ actorType: 'operator', actorId: input.operator_id ?? null, action: 'document.status_changed', entityType: 'document', entityId: updated.id, diffJson: { from_status: document.status, to_status: updated.status, ...(input.reason ? { reason: input.reason } : {}) } });
-    await db.insert(tbWebhookEvents).values({ eventType: 'document.status_changed', entityType: 'document', entityId: updated.id, payloadJson: { document_id: updated.id, order_id: updated.orderId, owner_user_id: updated.ownerUserId, from_status: document.status, to_status: updated.status, ...(input.reason ? { reason: input.reason } : {}) }, status: 'pending' });
+    await db.insert(tbAuditLogs).values({ actorType: 'operator', actorId: input.operator_id ?? null, action: 'document_status_changed', entityType: 'document', entityId: updated.id, diffJson: { from_status: document.status, to_status: updated.status, ...(input.reason ? { reason: input.reason } : {}) } });
+    await db.insert(tbWebhookEvents).values({ eventType: 'document_status_changed', entityType: 'document', entityId: updated.id, payloadJson: { document_id: updated.id, order_id: updated.orderId, owner_user_id: updated.ownerUserId, from_status: document.status, to_status: updated.status, ...(input.reason ? { reason: input.reason } : {}) }, status: 'pending' });
 
     await db.insert(tbNotifications).values({
       userId: updated.ownerUserId,

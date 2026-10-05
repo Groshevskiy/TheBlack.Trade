@@ -156,14 +156,14 @@ export class OrdersService {
       eventType: 'status_changed',
       fromStatus: order.statusCode,
       toStatus: input.status_code,
-      actorType: input.actor_type,
-      actorId: input.actor_id ?? null,
+      actorType: 'operator',
+      actorId: input.operator_id,
       payloadJson: input.payload ?? {},
     });
 
     await this.createStatusNotification(order, order.statusCode, input.status_code);
 
-    await this.createAuditAndWebhook({ actorType: input.actor_type, actorId: input.actor_id, action: 'order.status_changed', entityType: 'order', entityId: order.id, diff: { from_status: order.statusCode, to_status: input.status_code }, eventType: 'order.status_changed', payload: { order_id: order.id, order_public_id: order.publicId, from_status: order.statusCode, to_status: input.status_code } });
+    await this.createAuditAndWebhook({ actorType: 'operator', actorId: input.operator_id, action: 'order.status_changed', entityType: 'order', entityId: order.id, diff: { from_status: order.statusCode, to_status: input.status_code }, eventType: 'order.status_changed', payload: { order_id: order.id, order_public_id: order.publicId, from_status: order.statusCode, to_status: input.status_code, operator_id: input.operator_id } });
 
     const updated = await this.getByPublicId(publicId);
     if (!updated) {
@@ -172,12 +172,46 @@ export class OrdersService {
     return updated;
   }
 
+  private availableActionDefinitions(statusCode: string) {
+    const definitions: Record<string, { code: string; label: string; next_status: string; requires_payment_proof?: boolean }[]> = {
+      draft: [
+        { code: 'request_payment', label: 'Request payment', next_status: 'awaiting_payment' },
+        { code: 'cancel', label: 'Cancel order', next_status: 'cancelled' },
+      ],
+      awaiting_payment: [
+        { code: 'confirm_payment', label: 'Confirm payment', next_status: 'payment_confirmed', requires_payment_proof: true },
+        { code: 'cancel', label: 'Cancel order', next_status: 'cancelled' },
+      ],
+      payment_confirmed: [
+        { code: 'start_processing', label: 'Start processing', next_status: 'processing' },
+        { code: 'cancel', label: 'Cancel order', next_status: 'cancelled' },
+      ],
+      processing: [
+        { code: 'complete', label: 'Complete order', next_status: 'completed' },
+        { code: 'cancel', label: 'Cancel order', next_status: 'cancelled' },
+      ],
+    };
+    return definitions[statusCode] ?? [];
+  }
+
   async listActions(publicId: string) {
     const order = await this.getByPublicId(publicId);
     if (!order) {
       throw new NotFoundException({ message: 'Order not found', public_id: publicId });
     }
-    return db.select().from(tbOrderActions).where(eq(tbOrderActions.orderId, order.id)).orderBy(desc(tbOrderActions.createdAt));
+
+    const available = this.availableActionDefinitions(order.statusCode);
+    if (!available.length) {
+      return [];
+    }
+
+    if (order.statusCode === 'awaiting_payment') {
+      const documents = await db.select().from(tbDocuments).where(eq(tbDocuments.orderId, order.id)).orderBy(desc(tbDocuments.createdAt));
+      const hasApprovedPaymentProof = documents.some((document) => document.documentType === 'payment_proof' && document.status === 'approved');
+      return available.filter((action) => !action.requires_payment_proof || hasApprovedPaymentProof);
+    }
+
+    return available;
   }
 
   async executeAction(publicId: string, payload: Record<string, unknown>) {
@@ -202,6 +236,7 @@ export class OrdersService {
     }
 
     const actionStatusMap: Record<ExecuteOrderActionInput['action_code'], string> = {
+      request_payment: 'awaiting_payment',
       confirm_payment: 'payment_confirmed',
       start_processing: 'processing',
       complete: 'completed',
@@ -209,7 +244,7 @@ export class OrdersService {
     };
     const targetStatus = actionStatusMap[input.action_code];
     const transitions: Record<string, string[]> = {
-      draft: ['cancelled'],
+      draft: ['awaiting_payment', 'cancelled'],
       awaiting_payment: ['payment_confirmed', 'cancelled'],
       payment_confirmed: ['processing', 'cancelled'],
       processing: ['completed', 'cancelled'],

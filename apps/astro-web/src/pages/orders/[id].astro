@@ -66,6 +66,26 @@ const { id } = Astro.params;
         <p class="lede" id="next-copy">The page will explain what the customer should do next.</p>
       </section>
 
+      <section class="card" id="proof-card" hidden>
+        <div class="section-head">
+          <div><p class="eyebrow">Payment proof</p><h2>Submit payment confirmation</h2></div>
+          <span id="proof-status" class="tiny">Waiting for order data…</span>
+        </div>
+        <form id="proof-form" class="proof-form">
+          <label>
+            <span>File reference</span>
+            <input id="proof-file-id" name="file_id" type="text" placeholder="receipt-2026-10-05-001" required />
+          </label>
+          <label>
+            <span>Comment</span>
+            <textarea id="proof-comment" name="comment" rows="3" placeholder="Bank transfer receipt uploaded by customer"></textarea>
+          </label>
+          <div class="proof-actions">
+            <button id="proof-submit" class="btn-primary" type="submit">Submit proof</button>
+          </div>
+        </form>
+      </section>
+
       <section class="card">
         <div class="section-head">
           <div><p class="eyebrow">Documents</p><h2>Your uploads</h2></div>
@@ -86,7 +106,7 @@ const { id } = Astro.params;
 
   <style>
     .hero,.section-head,.hero-actions{display:flex;justify-content:space-between;gap:16px;align-items:center}
-    .hero{margin-bottom:16px;flex-wrap:wrap}.hero h2,.section-head h2{margin:4px 0 0}.eyebrow{margin:0;color:#8b98ab;text-transform:uppercase;letter-spacing:.08em;font-size:12px;font-weight:700}.lede,.tiny{color:#b6c0cf}.tiny{font-size:13px}.hero-actions{margin-left:auto}.hero-actions button,.ghost-link{background:#0f1115;color:#f5f7fa;border:1px solid #2a2f3a;border-radius:10px;padding:10px 14px;font:inherit}.ghost-link{display:inline-flex;align-items:center}.layout{grid-template-columns:minmax(0,1.5fr) minmax(280px,.9fr)}.stack{display:grid;gap:16px}.facts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.facts span{display:block;color:#8b98ab;font-size:13px}.facts strong{display:block;margin-top:4px;font-size:15px}.status{display:inline-flex;padding:6px 10px;border-radius:999px;font-size:12px;font-weight:700;border:1px solid currentColor;text-transform:capitalize}.status.completed{color:#86efac}.status.processing{color:#fde68a}.status.awaiting_payment,.status.payment_confirmed{color:#7dd3fc}.status.cancelled,.status.expired{color:#fca5a5}.status.draft{color:#d8b4fe}.timeline,.actions,.feed{display:grid;gap:12px}.event{display:grid;grid-template-columns:18px 1fr;gap:12px}.dot{width:10px;height:10px;margin-top:6px;border-radius:50%;background:#7dd3fc;box-shadow:0 0 0 4px rgba(125,211,252,.14)}.event-copy b,.feed-item b{display:block;margin-bottom:4px}.feed-item,.action-row{padding:12px 0;border-bottom:1px solid #2a2f3a}.feed-item:last-child,.action-row:last-child{border-bottom:0;padding-bottom:0}.action-row{display:flex;align-items:center;justify-content:space-between;gap:12px}.action-row button{background:#0f1115;color:#7dd3fc;border:1px solid #7dd3fc;border-radius:8px;padding:8px 12px;font:inherit}.action-copy{display:grid;gap:4px}.empty{color:#8b98ab}.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}.notice{margin:0 0 16px;padding:12px 14px;border:1px solid #7f1d1d;background:#2b1618;border-radius:10px;color:#fecaca}.notice.success{border-color:#1f5e45;background:#10281f;color:#bbf7d0}@media(max-width:960px){.layout{grid-template-columns:1fr}.facts{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:680px){.facts{grid-template-columns:1fr}.hero,.section-head,.hero-actions,.action-row{align-items:flex-start;flex-direction:column}}
+    .hero{margin-bottom:16px;flex-wrap:wrap}.hero h2,.section-head h2{margin:4px 0 0}.eyebrow{margin:0;color:#8b98ab;text-transform:uppercase;letter-spacing:.08em;font-size:12px;font-weight:700}.lede,.tiny{color:#b6c0cf}.tiny{font-size:13px}.hero-actions{margin-left:auto}.hero-actions button,.ghost-link{background:#0f1115;color:#f5f7fa;border:1px solid #2a2f3a;border-radius:10px;padding:10px 14px;font:inherit}.ghost-link{display:inline-flex;align-items:center}.layout{grid-template-columns:minmax(0,1.5fr) minmax(280px,.9fr)}.stack{display:grid;gap:16px}.facts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.facts span{display:block;color:#8b98ab;font-size:13px}.facts strong{display:block;margin-top:4px;font-size:15px}.status{display:inline-flex;padding:6px 10px;border-radius:999px;font-size:12px;font-weight:700;border:1px solid currentColor;text-transform:capitalize}.status.completed{color:#86efac}.status.processing{color:#fde68a}.status.awaiting_payment,.status.payment_confirmed{color:#7dd3fc}.status.cancelled,.status.expired{color:#fca5a5}.status.draft{color:#d8b4fe}.timeline,.actions,.feed{display:grid;gap:12px}.proof-form{display:grid;gap:12px}.proof-form label{display:grid;gap:8px}.proof-form span{color:#8b98ab;font-size:13px}.proof-form input,.proof-form textarea,.review-reason{background:#0f1115;color:#f5f7fa;border:1px solid #2a2f3a;border-radius:10px;padding:12px 14px;font:inherit}.proof-actions,.review-actions{display:flex;justify-content:flex-start;gap:10px;flex-wrap:wrap}.btn-primary,.review-actions button{background:#7dd3fc;color:#07111a;border:1px solid #7dd3fc;border-radius:10px;padding:12px 14px;font:inherit;font-weight:700;cursor:pointer;min-height:44px}.btn-primary:disabled,.review-actions button:disabled{opacity:.6;cursor:not-allowed}.review-actions .danger{background:#2b1618;color:#fecaca;border-color:#7f1d1d}.event{display:grid;grid-template-columns:18px 1fr;gap:12px}.dot{width:10px;height:10px;margin-top:6px;border-radius:50%;background:#7dd3fc;box-shadow:0 0 0 4px rgba(125,211,252,.14)}.event-copy b,.feed-item b{display:block;margin-bottom:4px}.feed-item,.action-row{padding:12px 0;border-bottom:1px solid #2a2f3a}.feed-item:last-child,.action-row:last-child{border-bottom:0;padding-bottom:0}.action-row{display:flex;align-items:center;justify-content:space-between;gap:12px}.action-row button{background:#0f1115;color:#7dd3fc;border:1px solid #7dd3fc;border-radius:8px;padding:8px 12px;font:inherit}.action-copy{display:grid;gap:4px}.empty{color:#8b98ab}.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}.notice{margin:0 0 16px;padding:12px 14px;border:1px solid #7f1d1d;background:#2b1618;border-radius:10px;color:#fecaca}.notice.success{border-color:#1f5e45;background:#10281f;color:#bbf7d0}@media(max-width:960px){.layout{grid-template-columns:1fr}.facts{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:680px){.facts{grid-template-columns:1fr}.hero,.section-head,.hero-actions,.action-row{align-items:flex-start;flex-direction:column}}
   </style>
 
   <script data-public-id={JSON.stringify(id)}>
@@ -107,6 +127,20 @@ const { id } = Astro.params;
     const notificationsCount = document.getElementById('notifications-count');
     const nextTitle = document.getElementById('next-title');
     const nextCopy = document.getElementById('next-copy');
+    const proofCard = document.getElementById('proof-card');
+    const proofStatus = document.getElementById('proof-status');
+    const proofForm = document.getElementById('proof-form');
+    const proofFileId = document.getElementById('proof-file-id');
+    const proofComment = document.getElementById('proof-comment');
+    const proofSubmit = document.getElementById('proof-submit');
+    let currentStatus = 'draft';
+    let activeRequest = null;
+    const resolvedActor = window.__TBT_ACTOR__ || {};
+    const ACTOR_OPERATOR_ID = resolvedActor.operatorId || 'demo-operator';
+    let currentOrder = null;
+    let currentDocuments = [];
+    let currentAvailableActions = [];
+    const ACTOR_USER_ID = resolvedActor.userId || '11111111-1111-4111-8111-111111111111';
 
     const fields = {
       publicId: document.getElementById('publicId'),
@@ -150,6 +184,27 @@ const { id } = Astro.params;
       return payload;
     }
 
+    function statusLabel(status) {
+      switch (status) {
+        case 'draft':
+          return 'Draft';
+        case 'awaiting_payment':
+          return 'Awaiting payment';
+        case 'payment_confirmed':
+          return 'Payment confirmed';
+        case 'processing':
+          return 'Processing';
+        case 'completed':
+          return 'Completed';
+        case 'cancelled':
+          return 'Cancelled';
+        case 'expired':
+          return 'Expired';
+        default:
+          return status || 'Unknown';
+      }
+    }
+
     function nextStepForStatus(status) {
       switch (status) {
         case 'draft':
@@ -188,9 +243,11 @@ const { id } = Astro.params;
     function renderSummary(item) {
       const order = item?.order ?? item;
       title.textContent = `${order.directionCode || order.direction_code || 'Order'} · ${order.publicId || publicId}`;
-      subtitle.textContent = `Current status: ${order.statusCode || 'unknown'}. Updated ${date(order.updatedAt)}.`;
-      const status = order.statusCode || 'draft';
-      statusBadge.textContent = status;
+      const status = order.statusCode || order.status_code || 'draft';
+      subtitle.textContent = `Current status: ${statusLabel(status)}. Updated ${date(order.updatedAt)}.`;
+      currentOrder = order;
+      currentStatus = status;
+      statusBadge.textContent = statusLabel(status);
       statusBadge.className = `status ${status}`;
       fields.publicId.textContent = order.publicId || '—';
       fields.direction.textContent = order.directionCode || order.direction_code || '—';
@@ -206,6 +263,71 @@ const { id } = Astro.params;
       nextCopy.textContent = next.copy;
     }
 
+    function documentStatusLabel(status) {
+      switch (status) {
+        case 'submitted':
+          return 'Submitted';
+        case 'approved':
+          return 'Approved';
+        case 'rejected':
+          return 'Rejected';
+        case 'pending':
+          return 'Pending';
+        default:
+          return status || 'Unknown';
+      }
+    }
+
+    function documentTypeLabel(documentType) {
+      switch (documentType) {
+        case 'payment_proof':
+          return 'Payment proof';
+        default:
+          return documentType || 'Document';
+      }
+    }
+
+    function actionLabel(actionCode) {
+      switch (actionCode) {
+        case 'request_payment':
+          return 'Request payment';
+        case 'confirm_payment':
+          return 'Confirm payment';
+        case 'start_processing':
+          return 'Start processing';
+        case 'complete':
+          return 'Complete order';
+        case 'cancel':
+          return 'Cancel order';
+        default:
+          return actionCode || 'Action';
+      }
+    }
+
+    function notificationLabel(templateCode) {
+      switch (templateCode) {
+        case 'order_status_changed':
+          return 'Order status update';
+        case 'document_status_changed':
+          return 'Document review update';
+        default:
+          return templateCode || 'Notification';
+      }
+    }
+
+    function timelineEventLabel(eventType) {
+      switch (eventType) {
+        case 'status_changed':
+          return 'Status updated';
+        case 'document_submitted':
+          return 'Document submitted';
+        case 'document_status_changed':
+          return 'Document review updated';
+        default:
+          return eventType || 'event';
+      }
+    }
+
     function renderTimeline(items = []) {
       timelineCount.textContent = `${items.length} events`;
       if (!items.length) {
@@ -216,43 +338,216 @@ const { id } = Astro.params;
         <div class="event">
           <div class="dot"></div>
           <div class="event-copy">
-            <b>${item.eventType || 'event'}</b>
-            <span>${item.fromStatus || '—'} → ${item.toStatus || '—'}</span>
+            <b>${timelineEventLabel(item.eventType)}</b>
+            <span>${statusLabel(item.fromStatus) || '—'} → ${statusLabel(item.toStatus) || '—'}</span>
             <span class="tiny">${date(item.createdAt)}</span>
           </div>
         </div>
       `).join('');
     }
 
-    function renderActions(items = []) {
-      actionsCount.textContent = `${items.length} actions`;
-      if (!items.length) {
-        actionsEl.innerHTML = '<p class="empty">No customer-visible actions are currently available.</p>';
+    async function executeAction(actionCode) {
+      const idempotencyKey = `${publicId}:${actionCode}:${Date.now()}`;
+      activeRequest = actionCode;
+      renderActions([]);
+      setNotice('');
+      try {
+        const actionPayload = await api(`/orders/${publicId}/actions`, {
+          method: 'POST',
+          body: JSON.stringify({
+            action_code: actionCode,
+            operator_id: ACTOR_OPERATOR_ID,
+            idempotency_key: idempotencyKey,
+            request_id: `ui_${Date.now()}`,
+            payload: { source: 'customer-order-detail' },
+          }),
+        });
+        const updatedOrder = actionPayload?.item?.order ?? actionPayload?.order ?? null;
+        if (updatedOrder) {
+          renderSummary(updatedOrder);
+          renderActions([], []);
+        }
+        setNotice(`${actionLabel(actionCode)} completed successfully.`, 'success');
+        activeRequest = null;
+        await loadOrderView();
+      } catch (error) {
+        activeRequest = null;
+        setNotice(error.message || 'Failed to execute order action.');
+        renderActions([], currentAvailableActions);
+      }
+    }
+
+    function renderActions(availableItems = [], historyItems = []) {
+      const available = Array.isArray(availableItems) ? availableItems : [];
+      const history = Array.isArray(historyItems) ? historyItems : [];
+      actionsCount.textContent = `${available.length} available · ${history.length} recorded`;
+      if (!available.length) {
+        actionsEl.innerHTML = history.length
+          ? history.map((item) => `
+            <div class="action-row">
+              <div class="action-copy">
+                <b>${actionLabel(item.actionCode || item.action_code)}</b>
+                <span class="tiny">${item.resultStatus || item.result_status || 'succeeded'} · ${date(item.createdAt)}</span>
+              </div>
+              <button type="button" disabled>Recorded</button>
+            </div>
+          `).join('')
+          : '<p class="empty">No customer-visible actions are currently available.</p>';
         return;
       }
-      actionsEl.innerHTML = items.map((item) => `
-        <div class="action-row">
+      actionsEl.innerHTML = available.map((item) => {
+        const code = item.code || item.actionCode || item.action_code;
+        const label = item.label || code;
+        const hint = item.hint || item.next_status ? `Next status: ${item.next_status || item.nextStatus}` : 'Available action from current order state.';
+        const danger = code === 'cancel';
+        return `
+        <div class="action-row ${danger ? 'danger' : ''}">
           <div class="action-copy">
-            <b>${item.actionCode || item.action_code}</b>
-            <span class="tiny">${item.status || 'pending'} · ${date(item.createdAt)}</span>
+            <b>${label}</b>
+            <span class="tiny">${hint}</span>
           </div>
-          <button type="button" disabled>Recorded</button>
+          <button type="button" data-action-code="${code}" ${activeRequest ? 'disabled' : ''}>${activeRequest === code ? 'Working…' : label}</button>
         </div>
-      `).join('');
+      `;
+      }).join('');
+      actionsEl.querySelectorAll('[data-action-code]').forEach((button) => {
+        button.addEventListener('click', () => executeAction(button.getAttribute('data-action-code') || ''));
+      });
+    }
+
+    function updateProofCard(documents = []) {
+      if (!proofCard || !proofStatus || !proofSubmit) return;
+      const visible = ['draft', 'awaiting_payment'].includes(currentStatus);
+      proofCard.hidden = !visible;
+      if (!visible) {
+        return;
+      }
+      const paymentProofs = (Array.isArray(documents) ? documents : []).filter((item) => (item.documentType || item.document_type) === 'payment_proof');
+      const latestProof = paymentProofs[0] || null;
+      if (latestProof) {
+        const latestStatus = latestProof.status || 'submitted';
+        proofStatus.textContent = `Latest ${documentTypeLabel(latestProof.documentType || latestProof.document_type)}: ${documentStatusLabel(latestStatus)} · ${date(latestProof.createdAt)}`;
+      } else {
+        proofStatus.textContent = currentStatus === 'awaiting_payment'
+          ? 'Upload the payment receipt or transfer reference for review.'
+          : 'You can prepare payment proof before the order reaches awaiting_payment.';
+      }
+      proofSubmit.disabled = activeRequest === 'proof-submit';
+    }
+
+    async function submitPaymentProof(event) {
+      event.preventDefault();
+      if (!currentOrder?.id) {
+        setNotice('Order identifier is not available for document submission.');
+        return;
+      }
+      const fileId = String(proofFileId?.value || '').trim();
+      const comment = String(proofComment?.value || '').trim();
+      if (!fileId) {
+        setNotice('Payment proof file reference is required.');
+        return;
+      }
+      activeRequest = 'proof-submit';
+      updateProofCard([]);
+      setNotice('');
+      try {
+        const createdDocument = await api('/documents', {
+          method: 'POST',
+          body: JSON.stringify({
+            owner_user_id: currentOrder.userId || currentOrder.user_id || ACTOR_USER_ID,
+            order_id: currentOrder.id,
+            document_type: 'payment_proof',
+            file_id: fileId,
+            metadata: comment ? { comment, source: 'customer-order-detail' } : { source: 'customer-order-detail' },
+          }),
+        });
+
+        const documentId = createdDocument?.item?.id ?? createdDocument?.id;
+        if (!documentId) {
+          throw new Error('Payment proof was created, but document identifier is missing.');
+        }
+
+        await api(`/documents/${documentId}/status`, {
+          method: 'POST',
+          body: JSON.stringify({
+            status: 'submitted',
+            operator_id: ACTOR_OPERATOR_ID,
+          }),
+        });
+
+        if (proofForm instanceof HTMLFormElement) proofForm.reset();
+        setNotice('Payment proof submitted successfully.', 'success');
+        activeRequest = null;
+        await loadOrderView();
+      } catch (error) {
+        activeRequest = null;
+        setNotice(error.message || 'Failed to submit payment proof.');
+        updateProofCard([]);
+      }
+    }
+
+    async function reviewDocument(documentId, status) {
+      const reasonInput = document.getElementById(`review-reason-${documentId}`);
+      const reason = String(reasonInput?.value || '').trim();
+      if (status === 'rejected' && !reason) {
+        setNotice('Rejection reason is required to reject a document.');
+        return;
+      }
+      activeRequest = `document-${documentId}-${status}`;
+      renderDocuments(currentDocuments);
+      setNotice('');
+      try {
+        await api(`/documents/${documentId}/status`, {
+          method: 'POST',
+          body: JSON.stringify({
+            status,
+            operator_id: ACTOR_OPERATOR_ID,
+            ...(reason ? { reason } : {}),
+          }),
+        });
+        setNotice(`Document ${status} successfully.`, 'success');
+        activeRequest = null;
+        await loadOrderView();
+      } catch (error) {
+        activeRequest = null;
+        setNotice(error.message || 'Failed to review document.');
+        renderDocuments(currentDocuments);
+      }
     }
 
     function renderDocuments(items = []) {
-      documentsCount.textContent = `${items.length} docs`;
-      if (!items.length) {
+      currentDocuments = Array.isArray(items) ? items : [];
+      updateProofCard(currentDocuments);
+      documentsCount.textContent = `${currentDocuments.length} docs`;
+      if (!currentDocuments.length) {
         documentsEl.innerHTML = '<p class="empty">No documents attached to this order yet.</p>';
         return;
       }
-      documentsEl.innerHTML = items.map((item) => `
+      documentsEl.innerHTML = currentDocuments.map((item) => {
+        const documentType = item.documentType || item.document_type;
+        const documentStatus = item.status || 'submitted';
+        const reviewReason = item.metadataJson?.review_reason || item.metadata_json?.review_reason || '';
+        const canReview = documentStatus === 'submitted';
+        const busyApprove = activeRequest === `document-${item.id}-approved`;
+        const busyReject = activeRequest === `document-${item.id}-rejected`;
+        return `
         <div class="feed-item">
-          <b>${item.documentType || item.document_type}</b>
-          <p>${item.status || 'pending'} · file ${item.fileId || item.file_id}</p>
+          <b>${documentType}</b>
+          <p>${documentStatus} · file ${item.fileId || item.file_id}</p>
+          ${reviewReason ? `<p class="tiny">Review note: ${reviewReason}</p>` : ''}
+          ${canReview ? `
+            <textarea id="review-reason-${item.id}" class="review-reason" rows="2" placeholder="Optional approval note or required rejection reason"></textarea>
+            <div class="review-actions">
+              <button type="button" data-document-id="${item.id}" data-review-status="approved" ${activeRequest ? 'disabled' : ''}>${busyApprove ? 'Approving…' : 'Approve'}</button>
+              <button type="button" class="danger" data-document-id="${item.id}" data-review-status="rejected" ${activeRequest ? 'disabled' : ''}>${busyReject ? 'Rejecting…' : 'Reject'}</button>
+            </div>
+          ` : ''}
         </div>
-      `).join('');
+      `;
+      }).join('');
+      documentsEl.querySelectorAll('[data-document-id][data-review-status]').forEach((button) => {
+        button.addEventListener('click', () => reviewDocument(button.getAttribute('data-document-id') || '', button.getAttribute('data-review-status') || ''));
+      });
     }
 
     function renderNotifications(items = []) {
@@ -263,7 +558,7 @@ const { id } = Astro.params;
       }
       notificationsEl.innerHTML = items.slice(0, 8).map((item) => `
         <div class="feed-item">
-          <b>${item.title || item.templateCode || item.template_code || 'Notification'}</b>
+          <b>${item.title || notificationLabel(item.templateCode || item.template_code) || 'Notification'}</b>
           <p>${item.body || 'No body'} · ${date(item.createdAt)}</p>
         </div>
       `).join('');
@@ -311,6 +606,9 @@ const { id } = Astro.params;
     }
 
     refreshBtn.addEventListener('click', loadOrderView);
+    if (proofForm) {
+      proofForm.addEventListener('submit', submitPaymentProof);
+    }
     loadOrderView();
   </script>
 </BaseLayout>

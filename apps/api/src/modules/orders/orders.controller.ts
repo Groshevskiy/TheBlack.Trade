@@ -1,5 +1,6 @@
 import { Body, Controller, Get, NotFoundException, Param, Post } from '@nestjs/common';
 import { OrdersService } from './orders.service.js';
+import { type CreateOrderInput, type ExecuteOrderActionInput, type UpdateOrderStatusInput } from './orders.dto.js';
 
 @Controller('orders')
 export class OrdersController {
@@ -12,7 +13,7 @@ export class OrdersController {
   }
 
   @Post()
-  async create(@Body() body: Record<string, unknown>) {
+  async create(@Body() body: CreateOrderInput) {
     return this.ordersService.create(body);
   }
 
@@ -23,7 +24,7 @@ export class OrdersController {
   }
 
   @Post(':publicId/actions')
-  async executeAction(@Param('publicId') publicId: string, @Body() body: Record<string, unknown>) {
+  async executeAction(@Param('publicId') publicId: string, @Body() body: ExecuteOrderActionInput) {
     return this.ordersService.executeAction(publicId, body);
   }
 
@@ -52,7 +53,7 @@ export class OrdersController {
   }
 
   @Post(':publicId/status')
-  async updateStatus(@Param('publicId') publicId: string, @Body() body: Record<string, unknown>) {
+  async updateStatus(@Param('publicId') publicId: string, @Body() body: UpdateOrderStatusInput) {
     const item = await this.ordersService.updateStatus(publicId, body);
     return { item };
   }
