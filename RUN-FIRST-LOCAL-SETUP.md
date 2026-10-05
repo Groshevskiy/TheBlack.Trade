@@ -8,7 +8,7 @@
 
 ## Boot sequence
 
-1. Copy `.env.example` to `.env` if you plan to externalize variables.
+1. Copy `.env.example` to `.env` if you plan to externalize variables. Keep `PUBLIC_DEMO_USER_ID` and `PUBLIC_DEMO_OPERATOR_ID` set so the Astro UI can bootstrap actor context for order/customer/operator flows until real auth/session wiring is in place.
 2. Run `docker compose -f docker-compose.local.yml up -d postgres redis minio mailhog`.
 3. Wait until PostgreSQL is healthy.
 4. Run `docker compose -f docker-compose.local.yml up -d directus api astro`.
