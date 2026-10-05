@@ -55,13 +55,14 @@ jobs:
           DATABASE_URL: postgresql://theblacktrade:theblacktrade@localhost:55432/theblacktrade
         run: npm --prefix apps/api run seed:smoke:summary
 
-      - name: Run API readiness and HTTP summary checks
+      - name: Run API readiness and HTTP verification
         env:
           API_READY_TIMEOUT_MS: 60000
           API_READY_INTERVAL_MS: 1000
         run: |
           npm run verify:ready
           npm run verify:http
+          npm run verify:http:lifecycle
 
       - name: Stop local stack
         if: always()

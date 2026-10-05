@@ -16,7 +16,8 @@
     "directus:schema:pull": "node scripts/directus-pull-schema.mjs",
     "check:ready": "node scripts/check-api-ready.mjs",
     "seed:smoke:summary": "node scripts/bootstrap-summary-smoke.mjs",
-    "test:smoke:summary": "node scripts/smoke-summary-endpoints.mjs"
+    "test:smoke:summary": "node scripts/smoke-summary-endpoints.mjs",
+    "test:smoke:lifecycle": "node scripts/smoke-order-lifecycle.mjs"
   },
   "dependencies": {
     "@directus/sdk": "^20.1.0",
