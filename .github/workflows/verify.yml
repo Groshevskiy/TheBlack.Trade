@@ -44,6 +44,11 @@ jobs:
         if: failure()
         run: docker compose logs --no-color api
 
+      - name: Bootstrap summary smoke fixture
+        env:
+          DATABASE_URL: postgresql://theblacktrade:theblacktrade@localhost:55432/theblacktrade
+        run: npm --prefix apps/api run seed:smoke:summary
+
       - name: Run API readiness and HTTP summary checks
         env:
           API_READY_TIMEOUT_MS: 60000

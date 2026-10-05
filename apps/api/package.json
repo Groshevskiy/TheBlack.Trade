@@ -15,6 +15,7 @@
     "directus:schema:apply": "node scripts/directus-apply-schema.mjs",
     "directus:schema:pull": "node scripts/directus-pull-schema.mjs",
     "check:ready": "node scripts/check-api-ready.mjs",
+    "seed:smoke:summary": "node scripts/bootstrap-summary-smoke.mjs",
     "test:smoke:summary": "node scripts/smoke-summary-endpoints.mjs"
   },
   "dependencies": {
