@@ -4,13 +4,16 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
 const { id } = Astro.params;
 ---
 <BaseLayout title={`Order ${id}`}>
-  <section class="card hero">
+  <section class="hero card">
     <div>
       <p class="eyebrow">Customer order</p>
       <h2>Track order <span class="mono">{id}</span></h2>
-      <p class="lede">Статус сделки, timeline, документы и дальнейшие шаги для клиента.</p>
+      <p class="lede">Статус сделки, timeline, документы, уведомления и следующие клиентские действия в одном экране.</p>
     </div>
-    <button id="refresh" type="button">Refresh</button>
+    <div class="hero-actions">
+      <a class="ghost-link" href="/orders">Back to orders</a>
+      <button id="refresh" type="button">Refresh</button>
+    </div>
   </section>
 
   <div id="notice" class="notice" hidden></div>
@@ -46,6 +49,14 @@ const { id } = Astro.params;
         </div>
         <div id="timeline" class="timeline"><p class="empty">Loading timeline…</p></div>
       </section>
+
+      <section class="card">
+        <div class="section-head">
+          <div><p class="eyebrow">Available actions</p><h2>Customer flow controls</h2></div>
+          <span id="actions-count" class="tiny">0 actions</span>
+        </div>
+        <div id="actions" class="actions"><p class="empty">Loading available actions…</p></div>
+      </section>
     </div>
 
     <div class="stack">
@@ -74,104 +85,232 @@ const { id } = Astro.params;
   </section>
 
   <style>
-    .hero,.section-head,.facts{display:flex}.hero,.section-head{justify-content:space-between;align-items:center;gap:16px}.hero{margin-bottom:16px;flex-wrap:wrap}.hero h2{margin:4px 0 0}.eyebrow{margin:0;color:#8b98ab;text-transform:uppercase;letter-spacing:.08em;font-size:12px;font-weight:700}.lede,.tiny{color:#b6c0cf}.tiny{font-size:12px}.notice{margin:0 0 16px;padding:12px 14px;border:1px solid #7f1d1d;background:#2b1618;border-radius:10px;color:#fecaca}.layout{align-items:start}.stack{display:grid;gap:16px}.facts{flex-wrap:wrap;gap:12px;margin-top:20px}.facts>div{min-width:180px;flex:1 1 180px;background:#0f1115;border:1px solid #2a2f3a;border-radius:12px;padding:14px}.facts span{display:block;color:#8b98ab;font-size:12px;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px}.facts strong{display:block;font-size:16px}.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}.status{display:inline-flex;padding:7px 12px;border-radius:999px;font-size:13px;font-weight:700;border:1px solid currentColor;text-transform:capitalize}.status.completed,.status.approved{color:#86efac}.status.processing,.status.pending{color:#fde68a}.status.awaiting_payment,.status.payment_confirmed{color:#7dd3fc}.status.cancelled,.status.expired,.status.rejected{color:#fca5a5}.status.draft{color:#d8b4fe}.timeline,.feed{display:grid;gap:12px}.event,.feed-item{padding:14px;border:1px solid #2a2f3a;border-radius:12px;background:#11151c}.event strong,.feed-item strong,.event p,.feed-item p{margin:0}.event p,.feed-item p{color:#b6c0cf;font-size:14px}.event-meta,.feed-meta{display:flex;justify-content:space-between;gap:12px;margin-bottom:8px;flex-wrap:wrap}.empty{color:#8b98ab}.hero button{background:#0f1115;color:#f5f7fa;border:1px solid #2a2f3a;border-radius:10px;padding:10px 14px;font:inherit;cursor:pointer}@media(max-width:860px){.layout{grid-template-columns:1fr}.section-head{align-items:flex-start;flex-direction:column}.hero button{width:100%}}
+    .hero,.section-head,.hero-actions{display:flex;justify-content:space-between;gap:16px;align-items:center}
+    .hero{margin-bottom:16px;flex-wrap:wrap}.hero h2,.section-head h2{margin:4px 0 0}.eyebrow{margin:0;color:#8b98ab;text-transform:uppercase;letter-spacing:.08em;font-size:12px;font-weight:700}.lede,.tiny{color:#b6c0cf}.tiny{font-size:13px}.hero-actions{margin-left:auto}.hero-actions button,.ghost-link{background:#0f1115;color:#f5f7fa;border:1px solid #2a2f3a;border-radius:10px;padding:10px 14px;font:inherit}.ghost-link{display:inline-flex;align-items:center}.layout{grid-template-columns:minmax(0,1.5fr) minmax(280px,.9fr)}.stack{display:grid;gap:16px}.facts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.facts span{display:block;color:#8b98ab;font-size:13px}.facts strong{display:block;margin-top:4px;font-size:15px}.status{display:inline-flex;padding:6px 10px;border-radius:999px;font-size:12px;font-weight:700;border:1px solid currentColor;text-transform:capitalize}.status.completed{color:#86efac}.status.processing{color:#fde68a}.status.awaiting_payment,.status.payment_confirmed{color:#7dd3fc}.status.cancelled,.status.expired{color:#fca5a5}.status.draft{color:#d8b4fe}.timeline,.actions,.feed{display:grid;gap:12px}.event{display:grid;grid-template-columns:18px 1fr;gap:12px}.dot{width:10px;height:10px;margin-top:6px;border-radius:50%;background:#7dd3fc;box-shadow:0 0 0 4px rgba(125,211,252,.14)}.event-copy b,.feed-item b{display:block;margin-bottom:4px}.feed-item,.action-row{padding:12px 0;border-bottom:1px solid #2a2f3a}.feed-item:last-child,.action-row:last-child{border-bottom:0;padding-bottom:0}.action-row{display:flex;align-items:center;justify-content:space-between;gap:12px}.action-row button{background:#0f1115;color:#7dd3fc;border:1px solid #7dd3fc;border-radius:8px;padding:8px 12px;font:inherit}.action-copy{display:grid;gap:4px}.empty{color:#8b98ab}.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}.notice{margin:0 0 16px;padding:12px 14px;border:1px solid #7f1d1d;background:#2b1618;border-radius:10px;color:#fecaca}.notice.success{border-color:#1f5e45;background:#10281f;color:#bbf7d0}@media(max-width:960px){.layout{grid-template-columns:1fr}.facts{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:680px){.facts{grid-template-columns:1fr}.hero,.section-head,.hero-actions,.action-row{align-items:flex-start;flex-direction:column}}
   </style>
 
-  <script define:vars={{ id }}>
+  <script data-public-id={JSON.stringify(id)}>
     const API = `${window.location.protocol}//${window.location.hostname}:4000/api`;
-    const orderId = id;
-    const $ = (s) => document.querySelector(s);
-    const fmt = (v) => Number(v ?? 0).toLocaleString('en-US');
-    const date = (v) => v ? new Date(v).toLocaleString('ru-RU', { dateStyle: 'short', timeStyle: 'short' }) : '—';
-    const cut = (v) => v ? `${String(v).slice(0, 8)}…` : '—';
-    const nextSteps = {
-      draft: ['Order created', 'Ожидается переход к шагу оплаты или подтверждению реквизитов.'],
-      awaiting_payment: ['Send payment', 'Переведите фиат по выданным реквизитам и дождитесь подтверждения оплаты.'],
-      payment_confirmed: ['Payment confirmed', 'Платёж подтверждён, заявка готовится к исполнению.'],
-      processing: ['Processing payout', 'Оператор завершает обмен и готовит перевод криптовалюты.'],
-      completed: ['Completed', 'Сделка завершена. Сохраните детали и проверьте поступление средств.'],
-      cancelled: ['Cancelled', 'Заявка отменена. При необходимости создайте новую сделку.'],
-      expired: ['Expired', 'Срок действия заявки истёк. Создайте новую заявку для продолжения.'],
+    const publicId = JSON.parse(document.currentScript?.dataset.publicId || 'null');
+    const refreshBtn = document.getElementById('refresh');
+    const notice = document.getElementById('notice');
+    const title = document.getElementById('hero-title');
+    const subtitle = document.getElementById('hero-subtitle');
+    const statusBadge = document.getElementById('status-badge');
+    const timelineEl = document.getElementById('timeline');
+    const timelineCount = document.getElementById('timeline-count');
+    const actionsEl = document.getElementById('actions');
+    const actionsCount = document.getElementById('actions-count');
+    const documentsEl = document.getElementById('documents');
+    const documentsCount = document.getElementById('documents-count');
+    const notificationsEl = document.getElementById('notifications');
+    const notificationsCount = document.getElementById('notifications-count');
+    const nextTitle = document.getElementById('next-title');
+    const nextCopy = document.getElementById('next-copy');
+
+    const fields = {
+      publicId: document.getElementById('publicId'),
+      direction: document.getElementById('direction'),
+      fiat: document.getElementById('fiat'),
+      crypto: document.getElementById('crypto'),
+      rate: document.getElementById('rate'),
+      expires: document.getElementById('expires'),
+      wallet: document.getElementById('wallet'),
+      payout: document.getElementById('payout'),
+      updated: document.getElementById('updated'),
     };
 
-    function notify(message = '') {
-      const box = $('#notice');
-      if (!message) { box.hidden = true; box.textContent = ''; return; }
-      box.hidden = false; box.textContent = message;
+    const fmt = (value, digits = 2) => Number(value ?? 0).toLocaleString('en-US', { maximumFractionDigits: digits });
+    const date = (value) => value ? new Date(value).toLocaleString('ru-RU', { dateStyle: 'short', timeStyle: 'short' }) : '—';
+
+    function setNotice(message = '', type = 'error') {
+      if (!message) {
+        notice.hidden = true;
+        notice.className = 'notice';
+        notice.textContent = '';
+        return;
+      }
+      notice.hidden = false;
+      notice.className = `notice ${type === 'success' ? 'success' : ''}`.trim();
+      notice.textContent = message;
     }
 
-    async function fetchJson(url) {
-      const response = await fetch(url);
-      const data = await response.json();
-      if (!response.ok) throw new Error(data?.message || 'Request failed');
-      return data;
+    async function api(path, options = {}) {
+      const response = await fetch(`${API}${path}`, {
+        headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
+        ...options,
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        const message = typeof payload?.message === 'string'
+          ? payload.message
+          : JSON.stringify(payload ?? {}).slice(0, 200) || `HTTP ${response.status}`;
+        throw new Error(message);
+      }
+      return payload;
     }
 
-    function renderSummary(order) {
-      $('#hero-title').textContent = `${fmt(order.fiatAmount)} fiat → ${fmt(order.cryptoAmount)} crypto`;
-      $('#hero-subtitle').textContent = `Quote ${cut(order.quoteId)} · User ${cut(order.userId)}`;
-      $('#publicId').textContent = order.publicId;
-      $('#direction').textContent = order.directionCode;
-      $('#fiat').textContent = fmt(order.fiatAmount);
-      $('#crypto').textContent = fmt(order.cryptoAmount);
-      $('#rate').textContent = order.rate;
-      $('#expires').textContent = date(order.expiresAt);
-      $('#wallet').textContent = cut(order.walletId);
-      $('#payout').textContent = cut(order.payoutRequisiteId);
-      $('#updated').textContent = date(order.updatedAt);
-      $('#status-badge').className = `status ${order.statusCode}`;
-      $('#status-badge').textContent = order.statusCode.replaceAll('_', ' ');
-      const [title, copy] = nextSteps[order.statusCode] || ['Status updated', 'Следуйте дальнейшим инструкциям поддержки.'];
-      $('#next-title').textContent = title;
-      $('#next-copy').textContent = copy;
-    }
-
-    function renderTimeline(items) {
-      $('#timeline-count').textContent = `${items.length} events`;
-      $('#timeline').innerHTML = items.length ? items.map((item) => `
-        <article class="event">
-          <div class="event-meta"><strong>${item.eventType}</strong><span>${date(item.createdAt)}</span></div>
-          <p>${item.fromStatus || '—'} → ${item.toStatus || '—'}</p>
-          <p>${item.actorType || 'system'}${item.actorId ? ` · ${item.actorId}` : ''}</p>
-        </article>`).join('') : '<p class="empty">No events yet.</p>';
-    }
-
-    function renderDocuments(items) {
-      $('#documents-count').textContent = `${items.length} docs`;
-      $('#documents').innerHTML = items.length ? items.map((item) => `
-        <article class="feed-item">
-          <div class="feed-meta"><strong>${item.documentType}</strong><span class="status ${item.status}">${item.status}</span></div>
-          <p>ID: <span class="mono">${item.id}</span></p>
-          <p>Created: ${date(item.createdAt)}</p>
-        </article>`).join('') : '<p class="empty">No uploaded documents yet.</p>';
-    }
-
-    function renderNotifications(items) {
-      $('#notifications-count').textContent = `${items.length} items`;
-      $('#notifications').innerHTML = items.length ? items.map((item) => `
-        <article class="feed-item">
-          <div class="feed-meta"><strong>${item.title}</strong><span>${date(item.createdAt)}</span></div>
-          <p>${item.body}</p>
-          <p>Channel: ${item.channel}</p>
-        </article>`).join('') : '<p class="empty">No notifications yet.</p>';
-    }
-
-    async function load() {
-      try {
-        notify('');
-        const data = await fetchJson(`${API}/orders/${orderId}/summary`);
-        const item = data.item || {};
-        renderSummary(item.order);
-        renderTimeline(item.timeline || []);
-        renderDocuments(item.documents || []);
-        renderNotifications(item.notifications || []);
-      } catch (error) {
-        console.error('customer order detail failed', error);
-        notify(error.message || 'Unable to load order detail');
+    function nextStepForStatus(status) {
+      switch (status) {
+        case 'draft':
+          return {
+            title: 'Review the newly created request',
+            copy: 'Quote is locked in draft. Follow the upcoming steps and prepare payment details before the request moves to awaiting_payment.',
+          };
+        case 'awaiting_payment':
+          return {
+            title: 'Send fiat payment and upload proof',
+            copy: 'The system expects customer payment confirmation next. Operator or automated actions will move the order forward after proof is reviewed.',
+          };
+        case 'payment_confirmed':
+          return {
+            title: 'Payment confirmed',
+            copy: 'The order is ready for processing. Watch timeline and notifications for the next operational change.',
+          };
+        case 'processing':
+          return {
+            title: 'Processing in progress',
+            copy: 'Assets are being processed. Keep the order open and monitor recent notifications until final completion.',
+          };
+        case 'completed':
+          return {
+            title: 'Order completed',
+            copy: 'The lifecycle is closed. Use notifications and timeline as a receipt trail for support or compliance follow-up.',
+          };
+        default:
+          return {
+            title: 'Monitor the lifecycle',
+            copy: 'This screen aggregates the current state, audit-like timeline, related documents and user notifications for the order.',
+          };
       }
     }
 
-    document.getElementById('refresh').addEventListener('click', load);
-    load();
+    function renderSummary(item) {
+      const order = item?.order ?? item;
+      title.textContent = `${order.directionCode || order.direction_code || 'Order'} · ${order.publicId || publicId}`;
+      subtitle.textContent = `Current status: ${order.statusCode || 'unknown'}. Updated ${date(order.updatedAt)}.`;
+      const status = order.statusCode || 'draft';
+      statusBadge.textContent = status;
+      statusBadge.className = `status ${status}`;
+      fields.publicId.textContent = order.publicId || '—';
+      fields.direction.textContent = order.directionCode || order.direction_code || '—';
+      fields.fiat.textContent = fmt(order.fiatAmount || order.fiat_amount, 2);
+      fields.crypto.textContent = fmt(order.cryptoAmount || order.crypto_amount, 8);
+      fields.rate.textContent = fmt(order.rate, 6);
+      fields.expires.textContent = date(order.expiresAt || order.expires_at);
+      fields.wallet.textContent = order.walletId || order.wallet_id || '—';
+      fields.payout.textContent = order.payoutRequisiteId || order.payout_requisite_id || '—';
+      fields.updated.textContent = date(order.updatedAt || order.updated_at);
+      const next = nextStepForStatus(status);
+      nextTitle.textContent = next.title;
+      nextCopy.textContent = next.copy;
+    }
+
+    function renderTimeline(items = []) {
+      timelineCount.textContent = `${items.length} events`;
+      if (!items.length) {
+        timelineEl.innerHTML = '<p class="empty">No timeline events yet.</p>';
+        return;
+      }
+      timelineEl.innerHTML = items.map((item) => `
+        <div class="event">
+          <div class="dot"></div>
+          <div class="event-copy">
+            <b>${item.eventType || 'event'}</b>
+            <span>${item.fromStatus || '—'} → ${item.toStatus || '—'}</span>
+            <span class="tiny">${date(item.createdAt)}</span>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function renderActions(items = []) {
+      actionsCount.textContent = `${items.length} actions`;
+      if (!items.length) {
+        actionsEl.innerHTML = '<p class="empty">No customer-visible actions are currently available.</p>';
+        return;
+      }
+      actionsEl.innerHTML = items.map((item) => `
+        <div class="action-row">
+          <div class="action-copy">
+            <b>${item.actionCode || item.action_code}</b>
+            <span class="tiny">${item.status || 'pending'} · ${date(item.createdAt)}</span>
+          </div>
+          <button type="button" disabled>Recorded</button>
+        </div>
+      `).join('');
+    }
+
+    function renderDocuments(items = []) {
+      documentsCount.textContent = `${items.length} docs`;
+      if (!items.length) {
+        documentsEl.innerHTML = '<p class="empty">No documents attached to this order yet.</p>';
+        return;
+      }
+      documentsEl.innerHTML = items.map((item) => `
+        <div class="feed-item">
+          <b>${item.documentType || item.document_type}</b>
+          <p>${item.status || 'pending'} · file ${item.fileId || item.file_id}</p>
+        </div>
+      `).join('');
+    }
+
+    function renderNotifications(items = []) {
+      notificationsCount.textContent = `${items.length} items`;
+      if (!items.length) {
+        notificationsEl.innerHTML = '<p class="empty">No recent notifications for this user.</p>';
+        return;
+      }
+      notificationsEl.innerHTML = items.slice(0, 8).map((item) => `
+        <div class="feed-item">
+          <b>${item.title || item.templateCode || item.template_code || 'Notification'}</b>
+          <p>${item.body || 'No body'} · ${date(item.createdAt)}</p>
+        </div>
+      `).join('');
+    }
+
+    async function loadOrderView() {
+      refreshBtn.disabled = true;
+      setNotice('');
+      try {
+        const [summaryPayload, timelinePayload, actionsPayload] = await Promise.all([
+          api(`/orders/${publicId}/summary`),
+          api(`/orders/${publicId}/timeline`),
+          api(`/orders/${publicId}/actions`),
+        ]);
+
+        renderSummary(summaryPayload?.item);
+        renderTimeline(Array.isArray(timelinePayload?.items) ? timelinePayload.items : []);
+        renderActions(Array.isArray(actionsPayload?.items) ? actionsPayload.items : []);
+
+        const orderId = summaryPayload?.item?.order?.id || summaryPayload?.item?.id;
+        const userId = summaryPayload?.item?.order?.userId || summaryPayload?.item?.userId;
+
+        if (orderId) {
+          const documentsPayload = await api(`/documents?order_id=${orderId}`);
+          renderDocuments(Array.isArray(documentsPayload?.items) ? documentsPayload.items : []);
+        } else {
+          renderDocuments([]);
+        }
+
+        if (userId) {
+          const notificationsPayload = await api(`/notifications?user_id=${userId}`);
+          renderNotifications(Array.isArray(notificationsPayload?.items) ? notificationsPayload.items : []);
+        } else {
+          renderNotifications([]);
+        }
+      } catch (error) {
+        setNotice(error.message || 'Failed to load order details.');
+        timelineEl.innerHTML = '<p class="empty">Unable to load timeline.</p>';
+        actionsEl.innerHTML = '<p class="empty">Unable to load actions.</p>';
+        documentsEl.innerHTML = '<p class="empty">Unable to load documents.</p>';
+        notificationsEl.innerHTML = '<p class="empty">Unable to load notifications.</p>';
+      } finally {
+        refreshBtn.disabled = false;
+      }
+    }
+
+    refreshBtn.addEventListener('click', loadOrderView);
+    loadOrderView();
   </script>
 </BaseLayout>
