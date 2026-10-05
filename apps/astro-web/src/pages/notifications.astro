@@ -2,263 +2,124 @@
 import BaseLayout from "../layouts/BaseLayout.astro";
 import CabinetHero from "../components/CabinetHero.astro";
 import MetricCard from "../components/MetricCard.astro";
-import SectionHead from "../components/SectionHead.astro";
+import InsightCard from "../components/InsightCard.astro";
+import StatusPill from "../components/StatusPill.astro";
+import EmptyState from "../components/EmptyState.astro";
+import FeedPanel from "../components/FeedPanel.astro";
 ---
 <BaseLayout title="Notifications">
-  <CabinetHero
-    title="Notifications center"
-    lede="Все customer-facing обновления по заказам в одном месте: unread queue, recent feed, фильтры и быстрые переходы в карточки сделок."
-    actionHref="/orders"
-    actionLabel="Open orders"
-  />
-
+  <CabinetHero title="Notifications center" lede="Все customer-facing обновления по заказам в одном месте: unread queue, recent feed, фильтры и быстрые переходы в карточки сделок." actionHref="/orders" actionLabel="Open orders" />
   <div id="notice" class="notice" hidden></div>
 
   <section class="metrics-grid">
-    <MetricCard
-      label="Unread"
-      valueId="statUnread"
-      description="Messages that still need customer attention."
-      accent={true}
-    />
-    <MetricCard
-      label="Total visible"
-      valueId="statVisible"
-      description="Notifications after the current filters are applied."
-    />
-    <MetricCard
-      label="Order-linked"
-      valueId="statOrderLinked"
-      description="Messages already connected to a specific order lifecycle."
-    />
-    <MetricCard
-      label="Recent 24h"
-      valueId="statRecent"
-      description="New updates delivered during the last day."
-    />
+    <MetricCard label="Unread" valueId="statUnread" description="Messages that still need customer attention." accent={true} />
+    <MetricCard label="Total visible" valueId="statVisible" description="Notifications after the current filters are applied." />
+    <MetricCard label="Order-linked" valueId="statOrderLinked" description="Messages already connected to a specific order lifecycle." />
+    <MetricCard label="Recent 24h" valueId="statRecent" description="New updates delivered during the last day." />
   </section>
 
   <section class="layout">
     <div class="stack">
-      <section class="card filters-card">
-        <SectionHead eyebrow="Filters" title="Review notifications" metaId="summary" metaText="Loading feed…" />
+      <FeedPanel eyebrow="Filters" title="Review notifications" metaId="summary" metaText="Loading feed…" className="filters-card" bodyClassName="filters-grid">
+        <label><span>Visibility</span><select id="visibilityFilter"><option value="all">All notifications</option><option value="unread">Unread only</option><option value="read">Read only</option></select></label>
+        <label><span>Search</span><input id="searchFilter" type="search" placeholder="Title, body, order ID" /></label>
+        <label><span>Sort</span><select id="sortFilter"><option value="recent_desc">Newest first</option><option value="recent_asc">Oldest first</option></select></label>
+      </FeedPanel>
 
-        <div class="filters-grid">
-          <label>
-            <span>Visibility</span>
-            <select id="visibilityFilter">
-              <option value="all">All notifications</option>
-              <option value="unread">Unread only</option>
-              <option value="read">Read only</option>
-            </select>
-          </label>
-
-          <label>
-            <span>Search</span>
-            <input id="searchFilter" type="search" placeholder="Title, body, order ID" />
-          </label>
-
-          <label>
-            <span>Sort</span>
-            <select id="sortFilter">
-              <option value="recent_desc">Newest first</option>
-              <option value="recent_asc">Oldest first</option>
-            </select>
-          </label>
-        </div>
-      </section>
-
-      <section class="card list-card">
-        <SectionHead eyebrow="Feed" title="Customer updates" metaId="visibleCount" metaText="0 shown" />
-        <div id="notificationsList" class="notifications-list">
-          <p class="empty">Loading notifications…</p>
-        </div>
-      </section>
+      <FeedPanel eyebrow="Feed" title="Customer updates" metaId="visibleCount" metaText="0 shown" className="list-card" bodyClassName="notifications-list">
+        <div id="notificationsList" class="notifications-list"><EmptyState message="Loading notifications…" /></div>
+      </FeedPanel>
     </div>
 
     <aside class="stack">
-      <section class="card insight-card">
-        <p class="eyebrow">Priority insight</p>
-        <h3 id="insightTitle">Preparing insight…</h3>
-        <p class="lede" id="insightCopy">The panel will highlight which notifications should be checked first.</p>
-      </section>
+      <InsightCard eyebrow="Priority insight" titleId="insightTitle" title="Preparing insight…" copyId="insightCopy" copy="The panel will highlight which notifications should be checked first." />
 
-      <section class="card">
-        <SectionHead eyebrow="Unread queue" title="Check first" />
-        <div id="unreadQueue" class="queue-list">
-          <p class="empty">Loading unread queue…</p>
-        </div>
-      </section>
+      <FeedPanel eyebrow="Unread queue" title="Check first" bodyClassName="queue-list">
+        <div id="unreadQueue" class="queue-list"><EmptyState message="Loading unread queue…" /></div>
+      </FeedPanel>
     </aside>
   </section>
 
+  <template id="status-pill-template"><StatusPill text="template" /></template>
+
   <style>
-    .notice{margin:0 0 16px;padding:12px 14px;border:1px solid #7f1d1d;background:#2b1618;border-radius:10px;color:#fecaca}.metrics-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin-bottom:16px}.notification-head,.queue-item{display:flex;justify-content:space-between;gap:16px;align-items:center}.insight-card h3{margin:4px 0 0}.eyebrow{margin:0;color:#8b98ab;text-transform:uppercase;letter-spacing:.08em;font-size:12px;font-weight:700}.lede,.tiny,.notification-card p,.queue-copy p{color:#b6c0cf}.filters-grid input,.filters-grid select{background:#0f1115;color:#f5f7fa;border:1px solid #2a2f3a;border-radius:10px;padding:10px 14px;font:inherit}.layout{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(300px,.9fr);gap:16px}.stack,.notifications-list,.queue-list{display:grid;gap:16px}.filters-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.filters-grid label{display:grid;gap:8px}.filters-grid span{color:#8b98ab;font-size:13px}.notification-card,.queue-item{padding:14px;border:1px solid #2a2f3a;border-radius:12px;background:#11151c}.notification-card{display:grid;gap:10px}.notification-title{display:grid;gap:4px}.notification-title h4,.notification-title p,.queue-copy h4,.queue-copy p{margin:0}.queue-item{align-items:flex-start}.queue-copy{display:grid;gap:6px}.queue-meta{display:grid;gap:6px;justify-items:end}.text-link{color:#7dd3fc}.empty{color:#8b98ab}.status-pill{display:inline-flex;align-items:center;padding:5px 10px;border-radius:999px;font-size:12px;font-weight:700;border:1px solid currentColor}.status-pill.read{color:#86efac}.status-pill.unread{color:#7dd3fc}@media(max-width:1120px){.metrics-grid,.filters-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.layout{grid-template-columns:1fr}}@media(max-width:760px){.metrics-grid,.filters-grid{grid-template-columns:1fr}.notification-head,.queue-item{align-items:flex-start;flex-direction:column}.queue-meta{justify-items:start}}
+    .notice{margin:0 0 16px;padding:12px 14px;border:1px solid #7f1d1d;background:#2b1618;border-radius:10px;color:#fecaca}.metrics-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin-bottom:16px}.notification-head,.queue-item{display:flex;justify-content:space-between;gap:16px;align-items:center}.notification-card p,.queue-copy p{color:#b6c0cf}.filters-grid input,.filters-grid select{background:#0f1115;color:#f5f7fa;border:1px solid #2a2f3a;border-radius:10px;padding:10px 14px;font:inherit}.layout{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(300px,.9fr);gap:16px}.stack,.notifications-list,.queue-list{display:grid;gap:16px}.filters-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.filters-grid label{display:grid;gap:8px}.filters-grid span{color:#8b98ab;font-size:13px}.notification-card,.queue-item{padding:14px;border:1px solid #2a2f3a;border-radius:12px;background:#11151c}.notification-card{display:grid;gap:10px}.notification-title{display:grid;gap:4px}.notification-title h4,.notification-title p,.queue-copy h4,.queue-copy p{margin:0}.queue-item{align-items:flex-start}.queue-copy{display:grid;gap:6px}.queue-meta{display:grid;gap:6px;justify-items:end}.text-link{color:#7dd3fc}.card-actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center}.inline-action{background:#0f1115;color:#f5f7fa;border:1px solid #2a2f3a;border-radius:10px;padding:10px 14px;font:inherit;cursor:pointer;min-height:44px}.inline-action:disabled{opacity:.6;cursor:not-allowed}@media(max-width:1120px){.metrics-grid,.filters-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.layout{grid-template-columns:1fr}}@media(max-width:760px){.metrics-grid,.filters-grid{grid-template-columns:1fr}.notification-head,.queue-item{align-items:flex-start;flex-direction:column}.queue-meta{justify-items:start}}
   </style>
 
-  <script>
-    const API = `${window.location.protocol}//${window.location.hostname}:4000/api`;
-    const noticeEl = document.getElementById('notice');
-    const summaryEl = document.getElementById('summary');
-    const visibleCountEl = document.getElementById('visibleCount');
-    const listEl = document.getElementById('notificationsList');
-    const queueEl = document.getElementById('unreadQueue');
-    const visibilityFilterEl = document.getElementById('visibilityFilter');
-    const searchFilterEl = document.getElementById('searchFilter');
-    const sortFilterEl = document.getElementById('sortFilter');
-    const insightTitleEl = document.getElementById('insightTitle');
-    const insightCopyEl = document.getElementById('insightCopy');
+  <script type="module">
+    import { emptyMarkup, fetchJson, formatRuDate, renderStatusPill, setNotice } from '../components/cabinetClient.ts';
 
+     const summaryEl = document.getElementById('summary'); const visibleCountEl = document.getElementById('visibleCount'); const listEl = document.getElementById('notificationsList'); const queueEl = document.getElementById('unreadQueue'); const visibilityFilterEl = document.getElementById('visibilityFilter'); const searchFilterEl = document.getElementById('searchFilter'); const sortFilterEl = document.getElementById('sortFilter'); const insightTitleEl = document.getElementById('insightTitle'); const insightCopyEl = document.getElementById('insightCopy'); const statusPillTemplate = document.getElementById('status-pill-template');
     let notifications = [];
-
-    function setNotice(message = '') {
-      noticeEl.hidden = !message;
-      noticeEl.textContent = message;
-    }
-
-    const formatDate = (value) => value ? new Date(value).toLocaleString('ru-RU', { dateStyle: 'short', timeStyle: 'short' }) : '—';
-    const pillMarkup = (text, tone) => `<span class="status-pill ${tone}">${text}</span>`;
-
-    async function fetchJson(path) {
-      const response = await fetch(`${API}${path}`);
+    let activeReadId = null;
+    async function postJson(path) {
+      const response = await fetch(`${window.location.protocol}//${window.location.hostname}:4000/api${path}`, { method: 'POST', headers: { 'Content-Type': 'application/json' } });
       const payload = await response.json().catch(() => null);
-      if (!response.ok) throw new Error(payload?.message || `HTTP ${response.status}`);
+      if (!response.ok) {
+        throw new Error(typeof payload?.message === 'string' ? payload.message : `HTTP ${response.status}`);
+      }
       return payload;
     }
-
     function getFilteredItems() {
-      const visibility = visibilityFilterEl.value;
-      const search = searchFilterEl.value.trim().toLowerCase();
-      const sort = sortFilterEl.value;
-
-      let items = [...notifications];
-
+      const visibility = visibilityFilterEl.value; const search = searchFilterEl.value.trim().toLowerCase(); const sort = sortFilterEl.value; let items = [...notifications];
       if (visibility === 'unread') items = items.filter((item) => item.isRead === false || item.is_read === false);
       if (visibility === 'read') items = items.filter((item) => item.isRead === true || item.is_read === true);
-
-      if (search) {
-        items = items.filter((item) => {
-          const haystack = [
-            item.title,
-            item.body,
-            item.relatedEntityPublicId,
-            item.related_entity_public_id,
-            item.templateCode,
-            item.template_code,
-          ].filter(Boolean).join(' ').toLowerCase();
-          return haystack.includes(search);
-        });
-      }
-
-      items.sort((a, b) => {
-        const left = new Date(a.createdAt || 0).getTime();
-        const right = new Date(b.createdAt || 0).getTime();
-        return sort === 'recent_asc' ? left - right : right - left;
-      });
-
-      return items;
+      if (search) items = items.filter((item) => [item.title,item.body,item.relatedEntityPublicId,item.related_entity_public_id,item.templateCode,item.template_code].filter(Boolean).join(' ').toLowerCase().includes(search));
+      items.sort((a,b) => { const left = new Date(a.createdAt || 0).getTime(); const right = new Date(b.createdAt || 0).getTime(); return sort === 'recent_asc' ? left - right : right - left; }); return items;
     }
-
     function renderMetrics(items) {
-      const unread = items.filter((item) => item.isRead === false || item.is_read === false);
-      const linked = items.filter((item) => item.relatedEntityPublicId || item.related_entity_public_id);
-      const recentThreshold = Date.now() - 24 * 60 * 60 * 1000;
-      const recent = items.filter((item) => new Date(item.createdAt || 0).getTime() >= recentThreshold);
-
-      document.getElementById('statUnread').textContent = String(unread.length);
-      document.getElementById('statVisible').textContent = String(getFilteredItems().length);
-      document.getElementById('statOrderLinked').textContent = String(linked.length);
-      document.getElementById('statRecent').textContent = String(recent.length);
-
-      return { unread, linked, recent };
+      const unread = items.filter((item) => item.isRead === false || item.is_read === false); const linked = items.filter((item) => item.relatedEntityPublicId || item.related_entity_public_id); const threshold = Date.now() - 24 * 60 * 60 * 1000; const recent = items.filter((item) => new Date(item.createdAt || 0).getTime() >= threshold);
+      document.getElementById('statUnread').textContent = String(unread.length); document.getElementById('statVisible').textContent = String(getFilteredItems().length); document.getElementById('statOrderLinked').textContent = String(linked.length); document.getElementById('statRecent').textContent = String(recent.length); return { unread };
     }
-
     function renderInsight(unread, visibleItems) {
-      if (unread.length > 0) {
-        insightTitleEl.textContent = 'Unread notifications should be reviewed first';
-        insightCopyEl.textContent = 'The main priority is to process customer-facing updates that have not yet been read, especially those linked to active order flow.';
-        return;
-      }
-      if (visibleItems.length > 0) {
-        insightTitleEl.textContent = 'Notification feed is up to date';
-        insightCopyEl.textContent = 'The feed still contains historical updates, but there are no urgent unread items at the moment.';
-        return;
-      }
-      insightTitleEl.textContent = 'No notifications match the current view';
-      insightCopyEl.textContent = 'Adjust the filters or wait for new events from customer lifecycle activity.';
+      if (unread.length > 0) { insightTitleEl.textContent = 'Unread notifications should be reviewed first'; insightCopyEl.textContent = 'The main priority is to process customer-facing updates that have not yet been read, especially those linked to active order flow.'; return; }
+      if (visibleItems.length > 0) { insightTitleEl.textContent = 'Notification feed is up to date'; insightCopyEl.textContent = 'The feed still contains historical updates, but there are no urgent unread items at the moment.'; return; }
+      insightTitleEl.textContent = 'No notifications match the current view'; insightCopyEl.textContent = 'Adjust the filters or wait for new events from customer lifecycle activity.';
     }
-
-    function renderList(items) {
-      visibleCountEl.textContent = `${items.length} shown`;
-      summaryEl.textContent = `${items.length} notifications in the current view`;
-      listEl.innerHTML = items.length ? items.map((item) => {
-        const relatedId = item.relatedEntityPublicId || item.related_entity_public_id;
-        const isUnread = item.isRead === false || item.is_read === false;
-        return `
-          <article class="notification-card">
-            <div class="notification-head">
-              <div class="notification-title">
-                <h4>${item.title || item.templateCode || item.template_code || 'Notification'}</h4>
-                <p>${formatDate(item.createdAt)}</p>
-              </div>
-              ${pillMarkup(isUnread ? 'unread' : 'read', isUnread ? 'unread' : 'read')}
-            </div>
-            <p>${item.body || 'No message body.'}</p>
-            ${relatedId ? `<a class="text-link" href="/orders/${relatedId}">Open linked order</a>` : ''}
-          </article>
-        `;
-      }).join('') : '<p class="empty">No notifications found for this filter.</p>';
-    }
-
-    function renderQueue(items) {
-      queueEl.innerHTML = items.length ? items.slice(0, 5).map((item) => {
-        const relatedId = item.relatedEntityPublicId || item.related_entity_public_id;
-        return `
-          <article class="queue-item">
-            <div class="queue-copy">
-              <h4>${item.title || item.templateCode || item.template_code || 'Notification'}</h4>
-              <p>${item.body || 'No message body.'}</p>
-            </div>
-            <div class="queue-meta">
-              <span>${formatDate(item.createdAt)}</span>
-              ${relatedId ? `<a class="text-link" href="/orders/${relatedId}">Order detail</a>` : ''}
-            </div>
-          </article>
-        `;
-      }).join('') : '<p class="empty">No unread notifications right now.</p>';
-    }
-
-    function syncView() {
-      const visibleItems = getFilteredItems();
-      const { unread } = renderMetrics(notifications);
-      renderList(visibleItems);
-      renderQueue(unread);
-      renderInsight(unread, visibleItems);
-    }
-
-    async function loadNotifications() {
-      const refreshButton = document.getElementById('refresh');
-      refreshButton.disabled = true;
-      setNotice('');
+    async function markNotificationRead(id) {
+      activeReadId = id;
+      syncView();
+      setNotice(document.getElementById('notice'), '');
       try {
-        const payload = await fetchJson('/notifications');
+        const payload = await postJson(`/notifications/${id}/read`);
+        const updated = payload?.item ?? null;
+        notifications = notifications.map((item) => item.id === id ? { ...item, ...(updated || {}), isRead: true, is_read: true, readAt: updated?.readAt || updated?.read_at || new Date().toISOString() } : item);
+        activeReadId = null;
+        syncView();
+        setNotice(document.getElementById('notice'), 'Notification marked as read.', 'success');
+      } catch (error) {
+        activeReadId = null;
+        syncView();
+        setNotice(document.getElementById('notice'), error.message || 'Failed to mark notification as read.');
+      }
+    }
+    function renderList(items) {
+      visibleCountEl.textContent = `${items.length} shown`; summaryEl.textContent = `${items.length} notifications in the current view`;
+      listEl.innerHTML = items.length ? items.map((item) => { const relatedId = item.relatedEntityPublicId || item.related_entity_public_id; const isUnread = item.isRead === false || item.is_read === false; const busy = activeReadId === item.id; return `<article class="notification-card"><div class="notification-head"><div class="notification-title"><h4>${item.title || item.templateCode || item.template_code || 'Notification'}</h4><p>${formatRuDate(item.createdAt)}</p></div>${renderStatusPill(statusPillTemplate, isUnread ? 'unread' : 'read', isUnread ? 'unread' : 'read')}</div><p>${item.body || 'No message body.'}</p><div class="card-actions">${relatedId ? `<a class="text-link" href="/orders/${relatedId}">Open linked order</a>` : ''}${isUnread ? `<button class="inline-action" type="button" data-read-id="${item.id}" ${busy ? 'disabled' : ''}>${busy ? 'Marking…' : 'Mark as read'}</button>` : `<span class="tiny">Already read</span>`}</div></article>`; }).join('') : emptyMarkup('No notifications found for this filter.');
+      listEl.querySelectorAll('[data-read-id]').forEach((button) => button.addEventListener('click', () => markNotificationRead(button.getAttribute('data-read-id') || '')));
+    }
+    function renderQueue(items) {
+      queueEl.innerHTML = items.length ? items.slice(0,5).map((item) => { const relatedId = item.relatedEntityPublicId || item.related_entity_public_id; return `<article class="queue-item"><div class="queue-copy"><h4>${item.title || item.templateCode || item.template_code || 'Notification'}</h4><p>${item.body || 'No message body.'}</p></div><div class="queue-meta"><span>${formatRuDate(item.createdAt)}</span>${relatedId ? `<a class="text-link" href="/orders/${relatedId}">Order detail</a>` : ''}</div></article>`; }).join('') : emptyMarkup('No unread notifications right now.');
+    }
+    function syncView() { const visibleItems = getFilteredItems(); const { unread } = renderMetrics(notifications); renderList(visibleItems); renderQueue(unread); renderInsight(unread, visibleItems); }
+    async function loadNotifications() {
+      const refreshButton = document.getElementById('refresh'); refreshButton.disabled = true; setNotice(document.getElementById('notice'), '');
+      try {
+        const summary = await fetchJson('/auth/me/summary');
+        const currentUser = summary?.user || summary?.item?.user || {};
+        const userId = currentUser?.id;
+
+        if (!userId) {
+          throw new Error('Missing user_id for notifications request.');
+        }
+
+        const payload = await fetchJson(`/notifications?user_id=${encodeURIComponent(userId)}`);
         notifications = Array.isArray(payload?.items) ? payload.items : [];
         syncView();
-      } catch (error) {
-        listEl.innerHTML = '<p class="empty">Unable to load notifications.</p>';
-        queueEl.innerHTML = '<p class="empty">Unable to load unread queue.</p>';
-        setNotice(error.message || 'Failed to load notifications.');
-      } finally {
-        refreshButton.disabled = false;
       }
+      catch (error) { listEl.innerHTML = emptyMarkup('Unable to load notifications.'); queueEl.innerHTML = emptyMarkup('Unable to load unread queue.'); setNotice(document.getElementById('notice'), error.message || 'Failed to load notifications.'); }
+      finally { refreshButton.disabled = false; }
     }
-
-    [visibilityFilterEl, searchFilterEl, sortFilterEl].forEach((node) => {
-      node.addEventListener('input', syncView);
-      node.addEventListener('change', syncView);
-    });
-
-    document.getElementById('refresh').addEventListener('click', loadNotifications);
-    loadNotifications();
+    [visibilityFilterEl, searchFilterEl, sortFilterEl].forEach((node) => { node.addEventListener('input', syncView); node.addEventListener('change', syncView); }); document.getElementById('refresh').addEventListener('click', loadNotifications); loadNotifications();
   </script>
 </BaseLayout>

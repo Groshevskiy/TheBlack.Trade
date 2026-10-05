@@ -1,0 +1,21 @@
+---
+export interface LinkItem {
+  href: string;
+  label: string;
+}
+
+export interface Props {
+  items: LinkItem[];
+}
+
+const { items } = Astro.props as Props;
+---
+<div class="quick-links">
+  {items.map((item) => (
+    <a href={item.href}>{item.label}</a>
+  ))}
+</div>
+
+<style>
+  .quick-links{display:grid;gap:16px}.quick-links a{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border:1px solid #2a2f3a;border-radius:12px;background:#0f1115;color:#7dd3fc;text-decoration:none}
+</style>

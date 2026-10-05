@@ -1,0 +1,20 @@
+---
+export interface Props {
+  eyebrow: string;
+  titleId?: string;
+  title: string;
+  copyId?: string;
+  copy: string;
+}
+
+const { eyebrow, titleId, title, copyId, copy } = Astro.props;
+---
+<section class="card insight-card">
+  <p class="eyebrow">{eyebrow}</p>
+  <h3 id={titleId}>{title}</h3>
+  <p class="lede" id={copyId}>{copy}</p>
+</section>
+
+<style>
+  .insight-card h3{margin:4px 0 0}.eyebrow{margin:0;color:var(--faint,#8b98ab);text-transform:uppercase;letter-spacing:.08em;font-size:12px;font-weight:700}.lede{color:var(--muted,#b6c0cf)}
+</style>

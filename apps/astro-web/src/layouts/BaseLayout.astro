@@ -4,6 +4,10 @@ export interface Props {
 }
 const { title = 'TheBlack.Trade' } = Astro.props;
 const path = Astro.url.pathname;
+const actorContext = {
+  userId: import.meta.env.PUBLIC_DEMO_USER_ID ?? '11111111-1111-4111-8111-111111111111',
+  operatorId: import.meta.env.PUBLIC_DEMO_OPERATOR_ID ?? 'demo-operator',
+};
 const navItems = [
   { href: '/', label: 'Create' },
   { href: '/dashboard', label: 'Dashboard' },
@@ -19,6 +23,9 @@ const navItems = [
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{title}</title>
+    <script is:inline define:vars={{ actorContext }}>
+      window.__TBT_ACTOR__ = Object.assign({}, window.__TBT_ACTOR__ || {}, actorContext);
+    </script>
     <style>
       :root {
         color-scheme: dark;

@@ -1,0 +1,13 @@
+---
+export interface Props {
+  id?: string;
+  message: string;
+}
+
+const { id, message } = Astro.props;
+---
+<p id={id} class="empty">{message}</p>
+
+<style>
+  .empty{color:var(--faint,#8b98ab);margin:0}
+</style>

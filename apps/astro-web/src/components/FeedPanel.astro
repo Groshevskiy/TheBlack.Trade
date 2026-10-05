@@ -1,0 +1,42 @@
+---
+import SectionHead from "./SectionHead.astro";
+
+export interface Props {
+  eyebrow: string;
+  title: string;
+  linkHref?: string;
+  linkLabel?: string;
+  metaText?: string;
+  metaId?: string;
+  className?: string;
+  bodyClassName?: string;
+}
+
+const {
+  eyebrow,
+  title,
+  linkHref,
+  linkLabel,
+  metaText,
+  metaId,
+  className = "",
+  bodyClassName = "feed",
+} = Astro.props;
+---
+<section class={`card panel-shell ${className}`.trim()}>
+  <SectionHead
+    eyebrow={eyebrow}
+    title={title}
+    linkHref={linkHref}
+    linkLabel={linkLabel}
+    metaText={metaText}
+    metaId={metaId}
+  />
+  <div class={bodyClassName}>
+    <slot />
+  </div>
+</section>
+
+<style>
+  .panel-shell{min-height:0}
+</style>
