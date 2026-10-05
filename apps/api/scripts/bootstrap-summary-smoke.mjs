@@ -56,11 +56,21 @@ async function main() {
       [ids.wallet, ids.user, ids.asset, ids.network],
     );
 
+    const { rows: fiatRows } = await client.query(
+      `SELECT id FROM tb_fiat_currencies WHERE code = 'RUB' LIMIT 1`,
+    );
+
+    if (fiatRows.length === 0) {
+      throw new Error('Reference fiat currency RUB is missing');
+    }
+
+    const fiatId = fiatRows[0].id;
+
     await client.query(
       `INSERT INTO tb_payout_requisites (id, user_id, fiat_currency_id, requisite_type, bank_name, card_mask, owner_name, status)
        VALUES ($1, $2, $3, 'card', 'Smoke Bank', '2200 **** 0000', 'CI Smoke User', 'active')
        ON CONFLICT (id) DO UPDATE SET user_id = EXCLUDED.user_id, fiat_currency_id = EXCLUDED.fiat_currency_id, requisite_type = EXCLUDED.requisite_type, bank_name = EXCLUDED.bank_name, card_mask = EXCLUDED.card_mask, owner_name = EXCLUDED.owner_name, status = 'active'`,
-      [ids.payout, ids.user, ids.fiat],
+      [ids.payout, ids.user, fiatId],
     );
 
     await client.query(
