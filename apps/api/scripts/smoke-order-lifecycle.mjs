@@ -1,6 +1,10 @@
 const baseUrl = process.env.API_BASE_URL ?? 'http://localhost:4000/api';
 const readinessTimeoutMs = Number(process.env.API_READY_TIMEOUT_MS ?? 20000);
 const readinessIntervalMs = Number(process.env.API_READY_INTERVAL_MS ?? 1000);
+const smokeCustomerEmail = process.env.SMOKE_CUSTOMER_EMAIL ?? 'smoke.customer@theblack.trade';
+const smokeCustomerPassword = process.env.SMOKE_CUSTOMER_PASSWORD ?? 'SmokeCustomer123!';
+const smokeOperatorEmail = process.env.SMOKE_OPERATOR_EMAIL ?? 'smoke.operator@theblack.trade';
+const smokeOperatorPassword = process.env.SMOKE_OPERATOR_PASSWORD ?? 'SmokeOperator123!';
 const fixture = {
   userId: '00000000-0000-0000-0000-000000000401',
 };
@@ -27,12 +31,89 @@ async function ensureApiReady() {
   throw new Error(`API is not ready after ${readinessTimeoutMs}ms: ${healthUrl} (${lastReason})`);
 }
 
+async function parseJson(response) {
+  try {
+    return await response.json();
+  } catch {
+    return null;
+  }
+}
+
+function authHeaders(token) {
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+async function registerOrLogin({ email, password, role = 'customer', locale = 'en' }) {
+  const registerResponse = await fetch(`${baseUrl}/auth/register`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ email, password, locale, role }),
+  });
+
+  const registerJson = await parseJson(registerResponse);
+  if (!registerResponse.ok && ![400, 409].includes(registerResponse.status)) {
+    throw new Error(`register ${email} failed with HTTP ${registerResponse.status}`);
+  }
+
+  if (registerResponse.ok && registerJson?.item?.access_token) {
+    return registerJson.item;
+  }
+
+  const loginResponse = await fetch(`${baseUrl}/auth/login`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ email, password }),
+  });
+
+  const loginJson = await parseJson(loginResponse);
+  if (!loginResponse.ok || !loginJson?.item?.access_token) {
+    throw new Error(`login ${email} failed with HTTP ${loginResponse.status}`);
+  }
+
+  return loginJson.item;
+}
+
+async function getCustomerSession() {
+  return registerOrLogin({
+    email: smokeCustomerEmail,
+    password: smokeCustomerPassword,
+    role: 'customer',
+    locale: 'en',
+  });
+}
+
+async function getOperatorSession() {
+  return registerOrLogin({
+    email: smokeOperatorEmail,
+    password: smokeOperatorPassword,
+    role: 'operator',
+    locale: 'en',
+  });
+}
+
+async function ensureCustomerKycApproved(userId) {
+  const pg = await import('pg');
+  const connectionString = process.env.DATABASE_URL ?? 'postgresql://theblacktrade:theblacktrade@localhost:55432/theblacktrade';
+  const client = new pg.Client({ connectionString });
+  await client.connect();
+  try {
+    await client.query(
+      `UPDATE tb_users
+         SET kyc_level = 'approved', status = 'active', updated_at = now()
+       WHERE id = $1`,
+      [userId],
+    );
+  } finally {
+    await client.end();
+  }
+}
+
 async function api(path, options = {}) {
   const response = await fetch(`${baseUrl}${path}`, {
-    headers: { 'content-type': 'application/json', ...(options.headers ?? {}) },
     ...options,
+    headers: { 'content-type': 'application/json', ...(options.headers ?? {}) },
   });
-  const payload = await response.json().catch(() => null);
+  const payload = await parseJson(response);
   if (!response.ok) {
     throw new Error(`${options.method ?? 'GET'} ${path} failed with HTTP ${response.status}: ${JSON.stringify(payload)}`);
   }
@@ -52,8 +133,16 @@ function hasTransition(items, fromStatus, toStatus, eventType) {
 async function main() {
   await ensureApiReady();
 
-  const quote = await api('/quotes/calculate', {
+  const customerSession = await getCustomerSession();
+  const operatorSession = await getOperatorSession();
+  const customerToken = customerSession.access_token;
+  const operatorToken = operatorSession.access_token;
+
+  await ensureCustomerKycApproved(customerSession.id);
+
+  const quoteResponse = await api('/quotes/calculate', {
     method: 'POST',
+    headers: authHeaders(customerToken),
     body: JSON.stringify({
       direction_code: 'buy',
       fiat_currency_code: 'RUB',
@@ -63,13 +152,14 @@ async function main() {
       amount: 15000,
     }),
   });
-  assert(quote?.quote_id, 'quote.quote_id is required');
+  const quoteId = quoteResponse?.item?.quote_uid ?? quoteResponse?.quote_uid;
+  assert(quoteId, 'quoteUid is required');
 
   const createdOrder = await api('/orders', {
     method: 'POST',
+    headers: authHeaders(customerToken),
     body: JSON.stringify({
-      quote_id: quote.quote_id,
-      user_id: fixture.userId,
+      quote_id: quoteId,
     }),
   });
   assert(createdOrder?.id && createdOrder?.publicId, 'created order identity is required');
@@ -77,6 +167,7 @@ async function main() {
 
   const updatedToAwaiting = await api(`/orders/${createdOrder.publicId}/status`, {
     method: 'POST',
+    headers: authHeaders(operatorToken),
     body: JSON.stringify({
       status_code: 'awaiting_payment',
       operator_id: 'ci-lifecycle-bootstrap',
@@ -87,6 +178,7 @@ async function main() {
 
   const createdDocument = await api('/documents', {
     method: 'POST',
+    headers: authHeaders(customerToken),
     body: JSON.stringify({
       owner_user_id: fixture.userId,
       order_id: createdOrder.id,
@@ -96,21 +188,21 @@ async function main() {
     }),
   });
   assert(createdDocument?.item?.id, 'document creation must return item.id');
-
   assert(createdDocument?.item?.status === 'submitted', 'created payment proof must start in submitted status');
 
   const approvedDocument = await api(`/documents/${createdDocument.item.id}/status`, {
     method: 'POST',
+    headers: authHeaders(operatorToken),
     body: JSON.stringify({ status: 'approved', operator_id: 'ci-operator-1' }),
   });
   assert(approvedDocument?.item?.status === 'approved', 'payment proof must be approved');
 
-  const paymentConfirmedOrder = await api(`/orders/${createdOrder.publicId}`);
+  const paymentConfirmedOrder = await api(`/orders/${createdOrder.publicId}`, { headers: authHeaders(customerToken) });
   assert(paymentConfirmedOrder?.statusCode === 'payment_confirmed', 'approved payment proof must move order to payment_confirmed');
-
 
   const startProcessing = await api(`/orders/${createdOrder.publicId}/actions`, {
     method: 'POST',
+    headers: authHeaders(operatorToken),
     body: JSON.stringify({
       action_code: 'start_processing',
       operator_id: 'ci-operator-1',
@@ -123,6 +215,7 @@ async function main() {
 
   const complete = await api(`/orders/${createdOrder.publicId}/actions`, {
     method: 'POST',
+    headers: authHeaders(operatorToken),
     body: JSON.stringify({
       action_code: 'complete',
       operator_id: 'ci-operator-1',
@@ -133,14 +226,14 @@ async function main() {
   });
   assert(complete?.order?.statusCode === 'completed', 'complete must move order to completed');
 
-  const order = await api(`/orders/${createdOrder.publicId}`);
+  const order = await api(`/orders/${createdOrder.publicId}`, { headers: authHeaders(customerToken) });
   assert(order?.statusCode === 'completed', `expected final order status completed, got ${order?.statusCode}`);
 
-  const actions = await api(`/orders/${createdOrder.publicId}/actions`);
+  const actions = await api(`/orders/${createdOrder.publicId}/actions`, { headers: authHeaders(customerToken) });
   assert(Array.isArray(actions?.items), 'order actions must return an items array');
   assert(actions.items.length === 0, 'completed order must not expose further actions');
 
-  const timeline = await api(`/orders/${createdOrder.publicId}/timeline`);
+  const timeline = await api(`/orders/${createdOrder.publicId}/timeline`, { headers: authHeaders(customerToken) });
   assert(Array.isArray(timeline?.items), 'timeline.items must be an array');
   assert(hasTransition(timeline.items, null, 'draft', 'order_created'), 'timeline must contain order_created');
   assert(hasTransition(timeline.items, 'draft', 'awaiting_payment', 'status_changed'), 'timeline must contain status_changed to awaiting_payment');
@@ -150,12 +243,12 @@ async function main() {
   assert(hasTransition(timeline.items, 'processing', 'completed', 'action_complete'), 'timeline must contain complete transition');
   assert(timeline.items.some((item) => item.eventType === 'document_submitted'), 'timeline must contain document_submitted event');
 
-  const notifications = await api(`/notifications?user_id=${fixture.userId}`);
+  const notifications = await api('/notifications', { headers: authHeaders(customerToken) });
   assert(Array.isArray(notifications?.items), 'notifications.items must be an array');
   const orderNotifications = notifications.items.filter((item) => item?.payloadJson?.order_public_id === createdOrder.publicId && item?.templateCode === 'order_status_changed');
   assert(orderNotifications.length >= 4, `expected at least 4 order status notifications, got ${orderNotifications.length}`);
 
-  const documents = await api(`/documents?order_id=${createdOrder.id}`);
+  const documents = await api(`/documents?order_id=${createdOrder.id}`, { headers: authHeaders(customerToken) });
   assert(Array.isArray(documents?.items) && documents.items.some((item) => item.id === createdDocument.item.id), 'documents list must include created document');
 
   const auditLogs = await api(`/audit-logs?entity_type=order&entity_id=${createdOrder.id}`);

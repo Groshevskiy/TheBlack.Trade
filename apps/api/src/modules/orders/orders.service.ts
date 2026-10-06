@@ -1,12 +1,41 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { SummaryService } from '../summary/summary.service.js';
 import { and, desc, eq } from 'drizzle-orm';
 import { db } from '../../db/index.js';
 import { tbAuditLogs, tbDocuments, tbNotifications, tbOrderActions, tbOrders, tbOrderTimeline, tbPairs, tbPayoutRequisites, tbQuotes, tbUsers, tbWallets, tbWebhookEvents } from '../../db/schema.js';
 import { CreateOrderSchema, ExecuteOrderActionSchema, UpdateOrderStatusSchema, type CreateOrderInput, type ExecuteOrderActionInput, type UpdateOrderStatusInput } from './orders.dto.js';
+import type { AuthenticatedUser } from '../auth/auth.types.js';
+
 
 @Injectable()
 export class OrdersService {
+  private async assertKycEligibleForTrading(userId: string) {
+    const userRows = await db.select().from(tbUsers).where(eq(tbUsers.id, userId)).limit(1);
+    const user = userRows[0];
+
+    let status = user?.kycLevel ?? 'not_started';
+
+    try {
+      const [{ tbKycCases }, { eq: eqDynamic }] = await Promise.all([
+        import('../../db/schema.js'),
+        import('drizzle-orm'),
+      ]);
+      const kycRows = await db.select().from(tbKycCases).where(eqDynamic(tbKycCases.userId, userId)).limit(1);
+      status = kycRows[0]?.status ?? status;
+    } catch (error) {
+      const code = typeof error === 'object' && error && 'cause' in error && typeof error.cause === 'object' && error.cause && 'code' in error.cause ? String(error.cause.code) : null;
+      if (code !== '42P01') throw error;
+    }
+
+    if (status !== 'approved') {
+      throw new ForbiddenException({
+        message: 'KYC approval is required before order creation',
+        block_reason: 'kyc_required',
+        kyc_status: status,
+        guidance: { block_reason: 'kyc_required', next_step: status === 'resubmission_requested' ? 'update_and_resubmit_kyc' : status === 'rejected' ? 'contact_support_or_resubmit_kyc' : 'complete_kyc' },
+      });
+    }
+  }
   constructor(private readonly summaryService: SummaryService) {}
 
   private async createAuditAndWebhook(input: { actorType: string; actorId?: string | null; action: string; entityType: string; entityId: string; diff: Record<string, unknown>; requestId?: string | null; eventType: string; payload: Record<string, unknown> }) {
@@ -29,8 +58,8 @@ export class OrdersService {
     });
   }
 
-  async list() {
-    return db.select().from(tbOrders).orderBy(desc(tbOrders.createdAt)).limit(50);
+  async listForUser(userId: string) {
+    return db.select().from(tbOrders).where(eq(tbOrders.userId, userId)).orderBy(desc(tbOrders.createdAt)).limit(50);
   }
 
   async getByPublicId(publicId: string) {
@@ -38,15 +67,24 @@ export class OrdersService {
     return rows[0] ?? null;
   }
 
-  async getSummary(publicId: string) {
-    const order = await this.getByPublicId(publicId);
+  async getByPublicIdForUser(userId: string, publicId: string) {
+    const rows = await db.select().from(tbOrders).where(and(eq(tbOrders.publicId, publicId), eq(tbOrders.userId, userId))).limit(1);
+    return rows[0] ?? null;
+  }
+
+  private async requireOwnedOrder(userId: string, publicId: string) {
+    const order = await this.getByPublicIdForUser(userId, publicId);
     if (!order) {
       throw new NotFoundException({ message: 'Order not found', public_id: publicId });
     }
+    return order;
+  }
 
+  async getSummaryForUser(userId: string, publicId: string) {
+    const order = await this.requireOwnedOrder(userId, publicId);
     const [bundle, actions] = await Promise.all([
       this.summaryService.getOrderBundle(order),
-      this.listActions(publicId),
+      this.listActionsForUser(userId, publicId),
     ]);
 
     return {
@@ -57,7 +95,7 @@ export class OrdersService {
 
   async getOperatorQueueSummary() {
     const orders = await db.select().from(tbOrders).orderBy(desc(tbOrders.updatedAt)).limit(50);
-    const documents = await db.select().from(tbDocuments).orderBy(desc(tbDocuments.createdAt)).limit(100);
+    const documents = await db.select({ id: tbDocuments.id, ownerUserId: tbDocuments.ownerUserId, orderId: tbDocuments.orderId, documentType: tbDocuments.documentType, fileId: tbDocuments.fileId, status: tbDocuments.status, metadataJson: tbDocuments.metadataJson, createdAt: tbDocuments.createdAt }).from(tbDocuments).orderBy(desc(tbDocuments.createdAt)).limit(100);
 
     const pendingByOrder = new Map<string, number>();
     for (const document of documents) {
@@ -108,16 +146,12 @@ export class OrdersService {
     };
   }
 
-  async listTimeline(publicId: string) {
-    const order = await this.getByPublicId(publicId);
-    if (!order) {
-      throw new NotFoundException({ message: 'Order not found', public_id: publicId });
-    }
-
+  async listTimelineForUser(userId: string, publicId: string) {
+    const order = await this.requireOwnedOrder(userId, publicId);
     return db.select().from(tbOrderTimeline).where(eq(tbOrderTimeline.orderId, order.id)).orderBy(desc(tbOrderTimeline.createdAt));
   }
 
-  async updateStatus(publicId: string, payload: Record<string, unknown>) {
+  async updateStatusAsOperator(operator: AuthenticatedUser, publicId: string, payload: Record<string, unknown>) {
     const parsed = UpdateOrderStatusSchema.safeParse(payload);
     if (!parsed.success) {
       throw new BadRequestException(parsed.error.flatten());
@@ -157,13 +191,13 @@ export class OrdersService {
       fromStatus: order.statusCode,
       toStatus: input.status_code,
       actorType: 'operator',
-      actorId: input.operator_id,
+      actorId: operator.id,
       payloadJson: input.payload ?? {},
     });
 
     await this.createStatusNotification(order, order.statusCode, input.status_code);
 
-    await this.createAuditAndWebhook({ actorType: 'operator', actorId: input.operator_id, action: 'order.status_changed', entityType: 'order', entityId: order.id, diff: { from_status: order.statusCode, to_status: input.status_code }, eventType: 'order.status_changed', payload: { order_id: order.id, order_public_id: order.publicId, from_status: order.statusCode, to_status: input.status_code, operator_id: input.operator_id } });
+    await this.createAuditAndWebhook({ actorType: 'operator', actorId: operator.id, action: 'order.status_changed', entityType: 'order', entityId: order.id, diff: { from_status: order.statusCode, to_status: input.status_code }, eventType: 'order.status_changed', payload: { order_id: order.id, order_public_id: order.publicId, from_status: order.statusCode, to_status: input.status_code, operator_id: operator.id } });
 
     const updated = await this.getByPublicId(publicId);
     if (!updated) {
@@ -214,7 +248,12 @@ export class OrdersService {
     return available;
   }
 
-  async executeAction(publicId: string, payload: Record<string, unknown>) {
+  async listActionsForUser(userId: string, publicId: string) {
+    await this.requireOwnedOrder(userId, publicId);
+    return this.listActions(publicId);
+  }
+
+  async executeActionAsOperator(operator: AuthenticatedUser, publicId: string, payload: Record<string, unknown>) {
     const parsed = ExecuteOrderActionSchema.safeParse(payload);
     if (!parsed.success) {
       throw new BadRequestException(parsed.error.flatten());
@@ -269,7 +308,7 @@ export class OrdersService {
       actionCode: input.action_code,
       requestId: input.request_id ?? null,
       idempotencyKey: input.idempotency_key,
-      operatorId: input.operator_id,
+      operatorId: operator.id,
       resultStatus: 'succeeded',
       payloadJson: input.payload ?? {},
     }).returning();
@@ -280,13 +319,13 @@ export class OrdersService {
       fromStatus: order.statusCode,
       toStatus: targetStatus,
       actorType: 'operator',
-      actorId: input.operator_id,
+      actorId: operator.id,
       payloadJson: { action_id: action.id, request_id: input.request_id ?? null, ...(input.payload ?? {}) },
     });
 
     await this.createStatusNotification(order, order.statusCode, targetStatus);
 
-    await this.createAuditAndWebhook({ actorType: 'operator', actorId: input.operator_id, action: `order.action.${input.action_code}`, entityType: 'order', entityId: order.id, diff: { from_status: order.statusCode, to_status: targetStatus, action_id: action.id }, requestId: input.request_id, eventType: 'order.status_changed', payload: { order_id: order.id, order_public_id: order.publicId, from_status: order.statusCode, to_status: targetStatus, action_code: input.action_code, action_id: action.id } });
+    await this.createAuditAndWebhook({ actorType: 'operator', actorId: operator.id, action: `order.action.${input.action_code}`, entityType: 'order', entityId: order.id, diff: { from_status: order.statusCode, to_status: targetStatus, action_id: action.id }, requestId: input.request_id, eventType: 'order.status_changed', payload: { order_id: order.id, order_public_id: order.publicId, from_status: order.statusCode, to_status: targetStatus, action_code: input.action_code, action_id: action.id, operator_id: operator.id } });
 
     const updated = await this.getByPublicId(publicId);
     if (!updated) {
@@ -295,7 +334,8 @@ export class OrdersService {
     return { action, order: updated, idempotent_replay: false };
   }
 
-  async create(payload: Record<string, unknown>) {
+  async createForUser(userId: string, payload: Record<string, unknown>) {
+    await this.assertKycEligibleForTrading(userId);
     const parsed = CreateOrderSchema.safeParse(payload);
     if (!parsed.success) {
       throw new BadRequestException(parsed.error.flatten());
@@ -303,23 +343,23 @@ export class OrdersService {
 
     const input: CreateOrderInput = parsed.data;
 
-    const userRows = await db.select().from(tbUsers).where(eq(tbUsers.id, input.user_id)).limit(1);
+    const userRows = await db.select().from(tbUsers).where(eq(tbUsers.id, userId)).limit(1);
     const user = userRows[0];
-    if (!user || user.status !== 'active') {
-      throw new NotFoundException({ message: 'User not found or inactive', user_id: input.user_id });
+    if (!user || (user.status !== 'active' && user.status !== null)) {
+      throw new NotFoundException({ message: 'User not found or inactive', user_id: userId });
     }
 
     if (input.wallet_id) {
-      const walletRows = await db.select().from(tbWallets).where(and(eq(tbWallets.id, input.wallet_id), eq(tbWallets.userId, input.user_id))).limit(1);
+      const walletRows = await db.select().from(tbWallets).where(and(eq(tbWallets.id, input.wallet_id), eq(tbWallets.userId, userId))).limit(1);
       if (!walletRows[0]) {
-        throw new NotFoundException({ message: 'Wallet not found for user', wallet_id: input.wallet_id, user_id: input.user_id });
+        throw new NotFoundException({ message: 'Wallet not found for user', wallet_id: input.wallet_id, user_id: userId });
       }
     }
 
     if (input.payout_requisite_id) {
-      const requisiteRows = await db.select().from(tbPayoutRequisites).where(and(eq(tbPayoutRequisites.id, input.payout_requisite_id), eq(tbPayoutRequisites.userId, input.user_id))).limit(1);
+      const requisiteRows = await db.select().from(tbPayoutRequisites).where(and(eq(tbPayoutRequisites.id, input.payout_requisite_id), eq(tbPayoutRequisites.userId, userId))).limit(1);
       if (!requisiteRows[0]) {
-        throw new NotFoundException({ message: 'Payout requisite not found for user', payout_requisite_id: input.payout_requisite_id, user_id: input.user_id });
+        throw new NotFoundException({ message: 'Payout requisite not found for user', payout_requisite_id: input.payout_requisite_id, user_id: userId });
       }
     }
 
@@ -350,7 +390,7 @@ export class OrdersService {
 
     await db.insert(tbOrders).values({
       publicId,
-      userId: input.user_id,
+      userId,
       quoteId: quote.id,
       directionCode: pair.directionCode,
       statusCode,
@@ -367,7 +407,7 @@ export class OrdersService {
       expiresAt,
     });
 
-    const created = await this.getByPublicId(publicId);
+    const created = await this.getByPublicIdForUser(userId, publicId);
     if (!created) {
       throw new NotFoundException({ message: 'Created order could not be reloaded', public_id: publicId });
     }
@@ -378,7 +418,7 @@ export class OrdersService {
       fromStatus: null,
       toStatus: statusCode,
       actorType: 'user',
-      actorId: input.user_id,
+      actorId: userId,
       payloadJson: { quote_id: input.quote_id, pair_id: pair.id },
     });
 
